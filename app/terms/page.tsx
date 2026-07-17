@@ -2,6 +2,7 @@ import Link from "next/link"
 import type { Metadata } from "next"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowLeft, Scale, Shield, Users, FileText, AlertTriangle, Lock } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "Terms and Conditions",
