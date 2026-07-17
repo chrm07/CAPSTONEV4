@@ -1,7 +1,13 @@
 import Link from "next/link"
+import type { Metadata } from "next"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Shield, Eye, Lock, Database, Users, FileText } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description: "Privacy Policy for the BTS Carmona (Bawat Tahanan May Scholar) scholarship program of the Municipality of Carmona.",
+  robots: { index: true, follow: true },
+}
 
 export default function PrivacyPolicy() {
   return (

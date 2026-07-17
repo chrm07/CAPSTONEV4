@@ -1,7 +1,13 @@
 import Link from "next/link"
+import type { Metadata } from "next"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Shield, Users, FileText, Lock, Scale, AlertTriangle } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "Terms and Conditions",
+  description: "Terms and Conditions for the BTS Carmona (Bawat Tahanan May Scholar) scholarship program of the Municipality of Carmona.",
+  robots: { index: true, follow: true },
+}
 
 export default function TermsAndConditions() {
   return (
