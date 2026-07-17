@@ -1,4 +1,5 @@
 import Link from "next/link"
+import type { Metadata } from "next"
 import { Button } from "@/components/ui/button"
 import { HeroSection } from "@/components/hero-section"
 import { MainNav } from "@/components/main-nav"
@@ -7,6 +8,16 @@ import { TestimonialsSection } from "@/components/testimonials-section"
 import { FaqSection } from "@/components/faq-section"
 import { CtaSection } from "@/components/cta-section"
 import { EnhancedFooter } from "@/components/enhanced-footer"
+
+export const metadata: Metadata = {
+  title: "BTS Carmona | Bawat Tahanan May Scholar Official Scholarship Portal",
+  description:
+    "Official BTS Carmona Scholarship Portal for the Municipality of Carmona. Apply for scholarships, submit requirements, monitor application status, receive announcements, and access student scholarship services online.",
+  openGraph: {
+    title: "BTS Carmona | Bawat Tahanan May Scholar Official Scholarship Portal",
+    description: "Official BTS Carmona Scholarship Portal for the Municipality of Carmona. Apply online, submit requirements, and track your scholarship application status.",
+  },
+}
 
 export default function Home() {
   return (

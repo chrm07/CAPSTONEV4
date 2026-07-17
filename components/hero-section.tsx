@@ -112,12 +112,28 @@ export function HeroSection() {
               </div>
             </div>
             
-            <div className="w-full flex justify-center">
+            <div className="w-full flex flex-col items-center gap-1">
+              <h1
+                className={`text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight text-center transition-all duration-800 ease-out ${
+                  isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+                }`}
+                style={{ animationDelay: "0.65s" }}
+              >
+                Bawat Tahanan May Scholar
+              </h1>
               <p
-                className={`text-base sm:text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed text-center transition-all duration-800 ease-out ${
+                className={`text-sm sm:text-base font-semibold text-emerald-700 text-center transition-all duration-800 ease-out ${
                   isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
                 }`}
                 style={{ animationDelay: "0.7s" }}
+              >
+                BTS Carmona — Official Scholarship Portal of the Municipality of Carmona
+              </p>
+              <p
+                className={`text-sm sm:text-base text-gray-600 max-w-3xl mx-auto leading-relaxed text-center transition-all duration-800 ease-out ${
+                  isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+                }`}
+                style={{ animationDelay: "0.75s" }}
               >
                 Empowering communities through education. Your journey to academic success starts here.
               </p>

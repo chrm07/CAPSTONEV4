@@ -66,6 +66,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: siteUrl,
   },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "",
+  },
 }
 
 export default function RootLayout({
@@ -75,11 +78,37 @@ export default function RootLayout({
 }>) {
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "BTS Carmona",
-    description: "Official scholarship management portal of the Municipality of Carmona.",
-    url: siteUrl,
-    logo: `${siteUrl}/images/bts-logo.jpg`,
+    "@graph": [
+      {
+        "@type": "GovernmentOrganization",
+        name: "Municipality of Carmona",
+        description: "Local government unit operating the BTS scholarship program.",
+        url: siteUrl,
+      },
+      {
+        "@type": "WebSite",
+        name: "BTS Carmona",
+        alternateName: "Bawat Tahanan May Scholar",
+        url: siteUrl,
+        description:
+          "Official scholarship management portal of the Municipality of Carmona. Apply online for the Bawat Tahanan May Scholar (BTS) Scholarship Program.",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${siteUrl}/search?q={search_term_string}`,
+          },
+          "query-input": "required name=search_term_string",
+        },
+      },
+      {
+        "@type": "WebPage",
+        name: "BTS Carmona | Bawat Tahanan May Scholar",
+        description:
+          "Official scholarship management portal of the Municipality of Carmona. Apply online for the Bawat Tahanan May Scholar (BTS) Scholarship Program, submit requirements, track applications, and receive scholarship updates.",
+        url: siteUrl,
+      },
+    ],
   }
 
   return (
