@@ -9,7 +9,7 @@ import { AdminLayout } from "@/components/admin-layout"
 import { QrScanner } from "@/components/qr-scanner"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { Check, CheckCircle, User, QrCode, Keyboard, Search, Loader2, XCircle, AlertCircle } from "lucide-react"
+import { Check, CheckCircle, User, QrCode, Keyboard, Search, Loader2, XCircle, AlertCircle, Ban } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 // 🔥 Added AlertDialog imports here
@@ -25,9 +25,19 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-import { collection, query, where, getDocs, getDoc, doc, onSnapshot } from "firebase/firestore"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+
+import { collection, query, where, getDocs, getDoc, doc, onSnapshot, addDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { markStudentAsClaimed } from "@/lib/storage"
+import { markStudentAsClaimed, cancelStudentPayout } from "@/lib/storage"
 
 async function decryptData(encryptedData: string, key: string): Promise<string> {
   try {
@@ -100,6 +110,14 @@ export default function QRVerificationPage() {
   
   const [activeUserId, setActiveUserId] = useState<string | null>(null)
   const [isClaimed, setIsClaimed] = useState(false)
+  const [isCancelled, setIsCancelled] = useState(false)
+  const [cancellationReason, setCancellationReason] = useState("")
+  const [cancelledAt, setCancelledAt] = useState("")
+  const [cancelledBy, setCancelledBy] = useState("")
+  const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [cancelReasonInput, setCancelReasonInput] = useState("")
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [cancelInputError, setCancelInputError] = useState("")
   const [verificationResult, setVerificationResult] = useState<{
     verified: boolean
     userId?: string
@@ -137,7 +155,16 @@ export default function QRVerificationPage() {
         
         if (application && application.status === "approved") {
           const alreadyClaimed = application.isClaimed || false;
+          const alreadyCancelled = application.isCancelled || false;
           setIsClaimed(alreadyClaimed);
+          setIsCancelled(alreadyCancelled);
+          setCancellationReason(application.cancellationReason || "");
+          setCancelledAt(application.cancelledAt || "");
+          setCancelledBy(application.cancelledBy || "");
+
+          let displayStatus = application.status;
+          if (alreadyCancelled) displayStatus = "cancelled";
+          else if (alreadyClaimed) displayStatus = "claimed";
 
           setVerificationResult({
             verified: true,
@@ -147,7 +174,7 @@ export default function QRVerificationPage() {
               name: profile.fullName || studentUser.name || "Unknown",
               course: application.course || profile.course || "N/A",
               yearLevel: application.yearLevel || profile.yearLevel || "N/A",
-              status: alreadyClaimed ? "claimed" : application.status,
+              status: displayStatus,
               profilePicture: uploadedProfilePic,
             },
           });
@@ -265,6 +292,63 @@ export default function QRVerificationPage() {
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Failed to mark as claimed." })
       setIsProcessing(false)
+    }
+  }
+
+  const handleCancelPayout = async () => {
+    const trimmedReason = cancelReasonInput.trim()
+    if (!trimmedReason) {
+      setCancelInputError("Please enter a reason for cancellation.")
+      return
+    }
+    setCancelInputError("")
+    if (!verificationResult?.userId || !user) {
+      toast({ variant: "destructive", title: "Error", description: "Cannot cancel payout. Missing information." })
+      return
+    }
+
+    setIsCancelling(true)
+    try {
+      const result = await cancelStudentPayout(verificationResult.userId, user.id, trimmedReason)
+
+      if (result.success) {
+        await addDoc(collection(db, "activity_logs"), {
+          studentId: verificationResult.userId,
+          action: "Financial Assistance Cancelled",
+          details: `Payout cancelled. Reason: ${trimmedReason}`,
+          timestamp: new Date().toISOString(),
+          type: "system"
+        })
+
+        await addDoc(collection(db, "notifications"), {
+          to: "student",
+          userId: verificationResult.userId,
+          message: "Your payout request has been cancelled by the administrator.",
+          read: false,
+          createdAt: new Date().toISOString()
+        })
+
+        toast({ title: "Payout Cancelled", description: result.message, className: "bg-red-600 text-white border-none" })
+        setShowCancelDialog(false)
+        setCancelReasonInput("")
+        setCancelInputError("")
+        setTimeout(() => {
+          setActiveUserId(null)
+          setVerificationResult(null)
+          setIsClaimed(false)
+          setIsCancelled(false)
+          setCancellationReason("")
+          setCancelledAt("")
+          setCancelledBy("")
+          setStudentId("")
+        }, 3000)
+      } else {
+        toast({ variant: "destructive", title: "Error", description: result.message })
+        setIsCancelling(false)
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to cancel payout." })
+      setIsCancelling(false)
     }
   }
 
@@ -519,20 +603,36 @@ export default function QRVerificationPage() {
                       </div>
                       <div className="col-span-2">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Payout Status</p>
-                        <Badge className="px-3 py-1 font-black uppercase tracking-widest text-[10px] sm:text-xs bg-emerald-100 text-emerald-700 border-transparent shadow-none">
-                          {verificationResult.student?.status}
+                        <Badge className={`px-3 py-1 font-black uppercase tracking-widest text-[10px] sm:text-xs border-transparent shadow-none ${
+                          isCancelled ? 'bg-red-100 text-red-700' : isClaimed ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-800'
+                        }`}>
+                          {isCancelled ? "Cancelled" : isClaimed ? "Claimed" : "Ready for Payout"}
                         </Badge>
                       </div>
                     </div>
 
-                    {isClaimed ? (
+                    {isCancelled ? (
+                      <div className="w-full p-4 rounded-2xl bg-red-50 border border-red-200 text-center mt-2 shrink-0">
+                        <div className="flex items-center justify-center gap-2 text-red-700 font-black uppercase tracking-wide text-sm">
+                          <Ban className="h-5 w-5" /> Payout Cancelled
+                        </div>
+                        {cancellationReason && (
+                          <p className="text-xs font-bold text-red-600 mt-2">Reason: {cancellationReason}</p>
+                        )}
+                        {cancelledAt && (
+                          <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mt-1">
+                            {new Date(cancelledAt).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    ) : isClaimed ? (
                       <div className="w-full p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center mt-2 shrink-0">
                         <div className="flex items-center justify-center gap-2 text-emerald-700 font-black uppercase tracking-wide text-sm">
                           <Check className="h-5 w-5" /> Financial Aid Claimed
                         </div>
                       </div>
                     ) : (
-                      <div className="pt-2 shrink-0">
+                      <div className="pt-2 shrink-0 space-y-3">
                         {/* 🔥 Added AlertDialog Confirmation Here */}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
@@ -562,6 +662,60 @@ export default function QRVerificationPage() {
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
+
+                        <Button
+                          onClick={() => { setShowCancelDialog(true); setCancelReasonInput(""); setCancelInputError("") }}
+                          className="w-full bg-red-600 hover:bg-red-700 text-white h-14 rounded-xl font-black text-base shadow-lg transition-transform active:scale-95"
+                          disabled={isProcessing}
+                        >
+                          <Ban className="h-5 w-5 mr-2" /> Cancel Payout
+                        </Button>
+
+                        <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+                          <DialogContent className="rounded-3xl border-0 shadow-2xl p-6 sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle className="text-xl font-black text-slate-800 uppercase tracking-tight">Cancel Payout</DialogTitle>
+                              <DialogDescription className="font-medium text-slate-600">
+                                This action will cancel the payout for this student. A reason is required.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-black uppercase tracking-wider text-slate-700">
+                                  Reason for Cancellation <span className="text-red-500">*</span>
+                                </label>
+                                <Textarea
+                                  placeholder="Enter the reason why this payout is being cancelled..."
+                                  value={cancelReasonInput}
+                                  onChange={(e) => { setCancelReasonInput(e.target.value); setCancelInputError("") }}
+                                  className={`min-h-[120px] rounded-xl border-2 resize-none ${cancelInputError ? 'border-red-400 focus-visible:ring-red-500' : 'border-slate-200 focus-visible:ring-red-500'}`}
+                                  disabled={isCancelling}
+                                />
+                                {cancelInputError && (
+                                  <p className="text-xs font-bold text-red-600 mt-1">{cancelInputError}</p>
+                                )}
+                              </div>
+                            </div>
+                            <DialogFooter className="gap-2">
+                              <Button
+                                variant="outline"
+                                onClick={() => setShowCancelDialog(false)}
+                                className="rounded-xl font-bold border-slate-200 text-slate-600 flex-1"
+                                disabled={isCancelling}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                onClick={handleCancelPayout}
+                                className="rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-md flex-1"
+                                disabled={isCancelling}
+                              >
+                                {isCancelling ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : null}
+                                {isCancelling ? "Cancelling..." : "Confirm Cancellation"}
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     )}
                   </div>
@@ -586,7 +740,7 @@ export default function QRVerificationPage() {
                     
                     <div className="pt-2 shrink-0">
                       <Button 
-                        onClick={() => { setActiveUserId(null); setVerificationResult(null); setStudentId(""); }} 
+                        onClick={() => { setActiveUserId(null); setVerificationResult(null); setStudentId(""); setIsClaimed(false); setIsCancelled(false); setCancellationReason(""); setCancelledAt(""); setCancelledBy(""); }} 
                         variant="outline"
                         className="w-full rounded-xl h-14 font-bold text-slate-600 border-slate-200 hover:bg-slate-50"
                       >

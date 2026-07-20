@@ -14,7 +14,7 @@ import { isSubmissionActive, isDistributionActive } from "@/lib/storage"
 import { 
   School, CheckCircle, FileText, ArrowRight, 
   CalendarDays, UploadCloud, Loader2, Banknote, 
-  Clock, XCircle, Facebook, Activity, Calendar, AlertCircle, Info
+  Clock, XCircle, Facebook, Activity, Calendar, AlertCircle, Info, Ban
 } from "lucide-react"
 
 function getTimelineSteps(application: any, schedule: any, studentBarangay: string) {
@@ -24,6 +24,7 @@ function getTimelineSteps(application: any, schedule: any, studentBarangay: stri
   const isApproved = application?.isApproved;
   const isRejected = application?.status === 'rejected'; 
   const isClaimed = application?.isClaimed;
+  const isCancelled = application?.isCancelled;
 
   // Strict Barangay Filtering for the Timeline
   const isTargetBarangay = schedule?.targetBarangays && Array.isArray(schedule.targetBarangays) 
@@ -81,10 +82,10 @@ function getTimelineSteps(application: any, schedule: any, studentBarangay: stri
     },
     { 
       id: "distribution", 
-      title: "Financial Distribution", 
-      description: isClaimed ? "You have successfully claimed your financial assistance." : "Claim your financial assistance at the designated municipal venue.", 
-      state: isClaimed ? "completed" : (hasFinancialSchedule && isApproved && !isClaimed ? "current" : "pending"), 
-      date: isClaimed ? formatDate(application.claimedAt) : "" 
+      title: isCancelled ? "Payout Cancelled" : "Financial Distribution", 
+      description: isCancelled ? `Your payout has been cancelled. Reason: ${application.cancellationReason || "Not specified"}` : (isClaimed ? "You have successfully claimed your financial assistance." : "Claim your financial assistance at the designated municipal venue."), 
+      state: isCancelled ? "error" : (isClaimed ? "completed" : (hasFinancialSchedule && isApproved && !isClaimed ? "current" : "pending")), 
+      date: isCancelled ? formatDate(application.cancelledAt) : (isClaimed ? formatDate(application.claimedAt) : "") 
     }
   ];
 }
@@ -305,6 +306,7 @@ export default function StudentDashboard() {
         </div>
 
         {/* DYNAMIC MESSAGING BANNER */}
+        {!currentApp?.isCancelled && (
         <div className={`bg-${messageData.color}-50 border-2 border-${messageData.color}-200 rounded-3xl animate-in zoom-in-95 shadow-sm flex flex-col overflow-hidden`}>
           <div className={`p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6`}>
             <div className="flex items-start md:items-center gap-5">
@@ -324,6 +326,38 @@ export default function StudentDashboard() {
             </Button>
           </div>
         </div>
+        )}
+
+        {/* CANCELLED PAYOUT DETAILS CARD */}
+        {currentApp?.isCancelled && (
+          <div className="rounded-3xl border-2 border-red-200 bg-red-50 p-6 md:p-8 shadow-sm animate-in zoom-in-95">
+            <div className="flex items-start gap-4">
+              <div className="bg-red-100 h-14 w-14 rounded-2xl flex items-center justify-center shrink-0">
+                <Ban className="h-7 w-7 text-red-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-black text-red-900 uppercase tracking-tight text-xl">Payout Cancelled</h3>
+                <p className="text-red-700 font-bold mt-1 text-base">
+                  Your payout request has been cancelled by the administrator.
+                </p>
+                {currentApp.cancellationReason && (
+                  <div className="mt-4 p-4 bg-white rounded-2xl border border-red-100">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-1">Reason</p>
+                    <p className="text-sm font-bold text-red-800">{currentApp.cancellationReason}</p>
+                  </div>
+                )}
+
+                <div className="mt-5 pt-4 border-t border-dashed border-red-200">
+                  <p className="text-sm text-red-700/80 leading-relaxed">
+                    <Info className="h-3.5 w-3.5 inline-block mr-1.5 -mt-0.5 text-red-500" />
+                    <span className="font-bold text-red-800">Important Notice:</span>{' '}
+                    Please visit the City Hall Scholarship Office to request a new payout schedule or to have your claim reprocessed.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* --- 3-COLUMN SIDE-BY-SIDE CARDS --- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">

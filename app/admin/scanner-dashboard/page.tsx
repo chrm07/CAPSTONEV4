@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { PermissionGuard } from "@/components/permission-guard"
-import { QrCode, Search, CheckCircle, XCircle, Loader2, MapPin, School, ScanLine } from "lucide-react"
+import { QrCode, Search, CheckCircle, XCircle, Loader2, MapPin, School, ScanLine, Ban } from "lucide-react"
 
 import {
   AlertDialog,
@@ -22,9 +22,19 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+
 import { collection, query, where, getDocs, updateDoc, doc, addDoc, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { isDistributionActive } from "@/lib/storage"
+import { isDistributionActive, cancelStudentPayout } from "@/lib/storage"
 import { useRouter } from "next/navigation"
 
 async function hashValue(value: string): Promise<string> {
@@ -43,6 +53,10 @@ export default function ScannerDashboardPage() {
   const [studentResult, setStudentResult] = useState<any | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [schedule, setSchedule] = useState<any>(null)
+  const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [cancelReasonInput, setCancelReasonInput] = useState("")
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [cancelInputError, setCancelInputError] = useState("")
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "settings", "schedule"), (docSnap) => {
@@ -165,6 +179,59 @@ export default function ScannerDashboardPage() {
     }
   }
 
+  const handleCancelPayout = async () => {
+    const trimmedReason = cancelReasonInput.trim()
+    if (!trimmedReason) {
+      setCancelInputError("Please enter a reason for cancellation.")
+      return
+    }
+    setCancelInputError("")
+    if (!studentResult) return
+    setIsCancelling(true)
+
+    try {
+      const appRef = doc(db, "applications", studentResult.id)
+      await updateDoc(appRef, {
+        isCancelled: true,
+        cancelledAt: new Date().toISOString(),
+        cancelledBy: "admin",
+        cancellationReason: trimmedReason,
+        updatedAt: new Date().toISOString()
+      })
+
+      await addDoc(collection(db, "activity_logs"), {
+        studentId: studentResult.studentId,
+        action: "Financial Assistance Cancelled",
+        details: `Payout cancelled. Reason: ${trimmedReason}`,
+        timestamp: new Date().toISOString(),
+        type: "system"
+      })
+
+      await addDoc(collection(db, "notifications"), {
+        to: "student",
+        userId: studentResult.studentId,
+        message: "Your payout request has been cancelled by the administrator.",
+        read: false,
+        createdAt: new Date().toISOString()
+      })
+
+      toast({
+        title: "Payout Cancelled",
+        description: `${studentResult.fullName}'s payout has been cancelled.`,
+        className: "bg-red-600 text-white"
+      })
+
+      setShowCancelDialog(false)
+      setCancelReasonInput("")
+      setCancelInputError("")
+      setStudentResult({ ...studentResult, isCancelled: true, cancelledAt: new Date().toISOString(), cancellationReason: trimmedReason })
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to cancel payout." })
+    } finally {
+      setIsCancelling(false)
+    }
+  }
+
   return (
     <PermissionGuard permission="verification">
       <AdminLayout>
@@ -237,7 +304,10 @@ export default function ScannerDashboardPage() {
 
               {studentResult && (
                 <div className="mt-8 animate-in slide-in-from-bottom-4">
-                  <div className={`border-2 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm ${studentResult.isClaimed ? 'border-emerald-200 bg-emerald-50' : 'border-indigo-100 bg-white'}`}>
+                  <div className={`border-2 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm ${
+                    studentResult.isCancelled ? 'border-red-200 bg-red-50' :
+                    studentResult.isClaimed ? 'border-emerald-200 bg-emerald-50' : 'border-indigo-100 bg-white'
+                  }`}>
                     
                     <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 w-full text-center sm:text-left">
                       <div className="h-20 w-20 bg-slate-100 rounded-2xl flex items-center justify-center border-2 border-white shadow-sm shrink-0 overflow-hidden">
@@ -248,8 +318,11 @@ export default function ScannerDashboardPage() {
                         )}
                       </div>
                       <div className="flex-1">
-                        <Badge className={`mb-2 shadow-none border-none uppercase tracking-widest text-[10px] font-black ${studentResult.isClaimed ? 'bg-emerald-200 text-emerald-800' : 'bg-indigo-100 text-indigo-800'}`}>
-                          {studentResult.isClaimed ? "Already Claimed" : "Ready for Payout"}
+                        <Badge className={`mb-2 shadow-none border-none uppercase tracking-widest text-[10px] font-black ${
+                          studentResult.isCancelled ? 'bg-red-200 text-red-800' :
+                          studentResult.isClaimed ? 'bg-emerald-200 text-emerald-800' : 'bg-indigo-100 text-indigo-800'
+                        }`}>
+                          {studentResult.isCancelled ? "Cancelled" : studentResult.isClaimed ? "Already Claimed" : "Ready for Payout"}
                         </Badge>
                         <h3 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight uppercase leading-none">
                           {studentResult.fullName}
@@ -267,7 +340,19 @@ export default function ScannerDashboardPage() {
                     </div>
 
                     <div className="w-full md:w-auto flex flex-col items-center md:items-end gap-3 shrink-0 pt-6 md:pt-0 border-t md:border-t-0 border-slate-200 md:border-none">
-                      {studentResult.isClaimed ? (
+                      {studentResult.isCancelled ? (
+                        <>
+                          <div className="flex items-center text-red-600 font-black uppercase text-xl">
+                            <Ban className="h-6 w-6 mr-2" /> Payout Cancelled
+                          </div>
+                          {studentResult.cancellationReason && (
+                            <p className="text-xs font-bold text-red-600 text-center">Reason: {studentResult.cancellationReason}</p>
+                          )}
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            {studentResult.cancelledAt ? new Date(studentResult.cancelledAt).toLocaleString() : ""}
+                          </p>
+                        </>
+                      ) : studentResult.isClaimed ? (
                         <>
                           <div className="flex items-center text-emerald-600 font-black uppercase text-xl">
                             <CheckCircle className="h-6 w-6 mr-2" /> Payout Claimed
@@ -279,6 +364,7 @@ export default function ScannerDashboardPage() {
                       ) : (
                         <>
                           {isDistributionActive(schedule) ? (
+                            <div className="flex flex-col sm:flex-row gap-3 w-full">
                              <AlertDialog>
                                <AlertDialogTrigger asChild>
                                  <Button 
@@ -307,6 +393,15 @@ export default function ScannerDashboardPage() {
                                  </AlertDialogFooter>
                                </AlertDialogContent>
                              </AlertDialog>
+
+                             <Button
+                               onClick={() => { setShowCancelDialog(true); setCancelReasonInput(""); setCancelInputError("") }}
+                               className="w-full h-16 px-8 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-lg shadow-xl hover:scale-105 active:scale-95 transition-all"
+                               disabled={isProcessing}
+                             >
+                               <Ban className="h-6 w-6 mr-2" /> Cancel Payout
+                             </Button>
+                            </div>
                           ) : (
                              <div className="text-center bg-red-50 p-4 rounded-2xl border border-red-100">
                                <XCircle className="h-6 w-6 text-red-600 mx-auto mb-1" />
@@ -323,6 +418,52 @@ export default function ScannerDashboardPage() {
 
             </CardContent>
           </Card>
+
+          <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+            <DialogContent className="rounded-3xl border-0 shadow-2xl p-6 sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-black text-slate-800 uppercase tracking-tight">Cancel Payout</DialogTitle>
+                <DialogDescription className="font-medium text-slate-600">
+                  This action will cancel the payout for this student. A reason is required.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-black uppercase tracking-wider text-slate-700">
+                    Reason for Cancellation <span className="text-red-500">*</span>
+                  </label>
+                  <Textarea
+                    placeholder="Enter the reason why this payout is being cancelled..."
+                    value={cancelReasonInput}
+                    onChange={(e) => { setCancelReasonInput(e.target.value); setCancelInputError("") }}
+                    className={`min-h-[120px] rounded-xl border-2 resize-none ${cancelInputError ? 'border-red-400 focus-visible:ring-red-500' : 'border-slate-200 focus-visible:ring-red-500'}`}
+                    disabled={isCancelling}
+                  />
+                  {cancelInputError && (
+                    <p className="text-xs font-bold text-red-600 mt-1">{cancelInputError}</p>
+                  )}
+                </div>
+              </div>
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCancelDialog(false)}
+                  className="rounded-xl font-bold border-slate-200 text-slate-600 flex-1"
+                  disabled={isCancelling}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCancelPayout}
+                  className="rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-md flex-1"
+                  disabled={isCancelling}
+                >
+                  {isCancelling ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : null}
+                  {isCancelling ? "Cancelling..." : "Confirm Cancellation"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
         </div>
       </AdminLayout>

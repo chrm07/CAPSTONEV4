@@ -93,6 +93,10 @@ export type Application = {
   isClaimed?: boolean
   claimedAt?: string
   processedByAdmin?: string
+  isCancelled?: boolean
+  cancelledAt?: string
+  cancelledBy?: string
+  cancellationReason?: string
 }
 
 export type Document = {
@@ -381,6 +385,27 @@ export async function markStudentAsClaimed(studentId: string, adminId: string) {
       isClaimed: true, claimedAt: new Date().toISOString(), processedByAdmin: adminId || "unknown_admin"
     })
     return { success: true, message: "Student has been successfully marked as claimed." }
+  } catch (error: any) {
+    return { success: false, message: `Firebase Error: ${error.message}` }
+  }
+}
+
+export async function cancelStudentPayout(studentId: string, adminId: string, reason: string) {
+  try {
+    const q = query(collection(db, "applications"), where("studentId", "==", studentId))
+    const snapshot = await getDocs(q)
+    const approvedApps = snapshot.docs.filter(doc => doc.data().status === "approved")
+    
+    if (approvedApps.length === 0) return { success: false, message: "No approved application found." }
+
+    await updateDoc(doc(db, "applications", approvedApps[0].id), {
+      isCancelled: true,
+      cancelledAt: new Date().toISOString(),
+      cancelledBy: adminId || "unknown_admin",
+      cancellationReason: reason,
+      updatedAt: new Date().toISOString()
+    })
+    return { success: true, message: "Payout has been successfully cancelled." }
   } catch (error: any) {
     return { success: false, message: `Firebase Error: ${error.message}` }
   }

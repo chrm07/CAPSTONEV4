@@ -13,7 +13,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { PermissionGuard } from "@/components/permission-guard"
 import { DataPagination } from "@/components/data-pagination"
 import { 
-  Search, MapPin, Loader2, Users, Mail, GraduationCap, School, CheckCircle, History, CalendarDays
+  Search, MapPin, Loader2, Users, Mail, GraduationCap, School, CheckCircle, History, CalendarDays, Ban
 } from "lucide-react"
 
 // FIRESTORE REAL-TIME UTILS
@@ -76,6 +76,8 @@ export default function ScholarsPage() {
             school: app.school || profile.schoolName || "Unknown",
             barangay: app.barangay || profile.barangay || "Unknown",
             isClaimed: app.isClaimed || false,
+            isCancelled: app.isCancelled || false,
+            cancellationReason: app.cancellationReason || "",
             profilePicture: profile.studentPhoto || profile.profilePicture || student?.profilePicture || null
           }
         })
@@ -402,16 +404,22 @@ export default function ScholarsPage() {
                                     </Badge>
                                   </TableCell>
 
-                                  <TableCell className="text-right pr-8 py-4 align-middle">
-                                    {scholar.isClaimed ? (
-                                      <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none shadow-none font-bold">
-                                        <CheckCircle className="h-3 w-3 mr-1" /> Claimed
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50 font-bold shadow-none">
-                                        Pending Payout
-                                      </Badge>
-                                    )}
+                                  <TableCell className="text-center align-middle py-4">
+                                    <div className="flex justify-center items-center">
+                                      {scholar.isCancelled ? (
+                                        <Badge className="min-w-[120px] h-10 inline-flex items-center justify-center rounded-full text-sm font-semibold px-4 whitespace-nowrap bg-red-100 text-red-700 hover:bg-red-100 border-none shadow-none">
+                                          <Ban className="h-3.5 w-3.5 mr-1.5 shrink-0" /> Cancelled
+                                        </Badge>
+                                      ) : scholar.isClaimed ? (
+                                        <Badge className="min-w-[120px] h-10 inline-flex items-center justify-center rounded-full text-sm font-semibold px-4 whitespace-nowrap bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none shadow-none">
+                                          <CheckCircle className="h-3.5 w-3.5 mr-1.5 shrink-0" /> Claimed
+                                        </Badge>
+                                      ) : (
+                                        <Badge className="min-w-[120px] h-10 inline-flex items-center justify-center rounded-full text-sm font-semibold px-4 whitespace-nowrap bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50 shadow-none">
+                                          Pending Payout
+                                        </Badge>
+                                      )}
+                                    </div>
                                   </TableCell>
                                 </TableRow>
                               ))}

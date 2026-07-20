@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/auth-context"
 import QRCode from "react-qr-code"
-import { QrCode as QrIcon, AlertCircle, Loader2, Lock, CheckCircle, CalendarDays, Info, Shield, Smartphone, Download, Clock } from "lucide-react"
+import { QrCode as QrIcon, AlertCircle, Loader2, Lock, CheckCircle, CalendarDays, Info, Shield, Smartphone, Download, Clock, Ban } from "lucide-react"
 import { collection, query, where, onSnapshot, doc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -114,6 +114,7 @@ export default function StudentQRCodePage() {
 
   const isApproved = application?.status === 'approved'
   const isClaimed = application?.isClaimed
+  const isCancelled = application?.isCancelled
 
   return (
     <StudentLayout>
@@ -153,8 +154,42 @@ export default function StudentQRCodePage() {
             
             <CardContent className="flex flex-col items-center justify-center p-8 bg-slate-50/50">
               
-              {/* SCENARIO 1: ALREADY CLAIMED */}
-              {isClaimed ? (
+              {/* SCENARIO 1: CANCELLED */}
+              {isCancelled ? (
+                <div className="text-center w-full animate-in zoom-in-95">
+                  <div className="h-24 w-24 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border-4 border-white ring-4 ring-red-50">
+                    <Ban className="h-12 w-12" />
+                  </div>
+                  <h2 className="text-2xl font-black text-red-900 uppercase tracking-tight mb-2">Payout Cancelled</h2>
+                  <p className="text-slate-500 font-medium mb-6 text-sm">
+                    Your payout request has been cancelled by the administrator.
+                  </p>
+                  {application?.cancellationReason && (
+                    <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4 text-left">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-1">Reason</p>
+                      <p className="text-sm font-bold text-red-800">{application.cancellationReason}</p>
+                    </div>
+                  )}
+                  {application?.cancelledAt && (
+                    <Badge className="bg-slate-200 text-slate-700 shadow-none border-none px-4 py-2 font-bold uppercase tracking-widest text-[10px]">
+                      Cancelled on {new Date(application.cancelledAt).toLocaleDateString()}
+                    </Badge>
+                  )}
+
+                  <div className="mt-5 pt-4 border-t border-dashed border-red-200 text-left">
+                    <p className="text-sm text-red-700/80 leading-relaxed">
+                      <Info className="h-3.5 w-3.5 inline-block mr-1.5 -mt-0.5 text-red-500" />
+                      <span className="font-bold text-red-800">Important Notice</span>
+                    </p>
+                    <p className="text-sm text-red-700/80 leading-relaxed mt-1">
+                      Please visit the City Hall Scholarship Office to request a new payout schedule or to have your claim reprocessed.
+                    </p>
+                  </div>
+                </div>
+              )
+              
+              /* SCENARIO 2: ALREADY CLAIMED */
+              : isClaimed ? (
                 <div className="text-center w-full animate-in zoom-in-95">
                   <div className="h-24 w-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border-4 border-white ring-4 ring-emerald-50">
                     <CheckCircle className="h-12 w-12" />
@@ -169,7 +204,7 @@ export default function StudentQRCodePage() {
                 </div>
               ) 
               
-              /* SCENARIO 2: APPROVED (READY TO CLAIM) - Displays immediately upon approval */
+              /* SCENARIO 3: APPROVED (READY TO CLAIM) - Displays immediately upon approval */
               : isApproved ? (
                 <div className="text-center w-full animate-fade-in">
                   <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 inline-block mb-6 relative group">
@@ -235,8 +270,8 @@ export default function StudentQRCodePage() {
                 <div className="h-6 w-6 rounded-full bg-slate-50 absolute -right-3 shadow-inner z-10 border border-slate-100"></div>
             </div>
 
-            {/* Download button only visible if approved and not yet claimed */}
-            {isApproved && !isClaimed && (
+            {/* Download button only visible if approved, not claimed, and not cancelled */}
+            {isApproved && !isClaimed && !isCancelled && (
               <div className="bg-white p-6">
                 <Button 
                   onClick={handleDownloadQRCode} 
@@ -249,12 +284,12 @@ export default function StudentQRCodePage() {
           </Card>
 
           {/* IMPORTANT REMINDER LOGIC */}
-          {isClaimed ? (
+          {!isCancelled && (isClaimed ? (
             <Alert className="max-w-md mx-auto border-emerald-200 bg-emerald-50 rounded-2xl shadow-sm">
               <CheckCircle className="h-5 w-5 text-emerald-600" />
               <AlertTitle className="text-emerald-900 font-black uppercase tracking-tight text-sm">Financial Assistance Claimed</AlertTitle>
               <AlertDescription className="text-emerald-800 font-bold text-xs mt-1 leading-relaxed">
-                Congrats, you’ve claimed your financial assistance for this cycle.
+                Congrats, you've claimed your financial assistance for this cycle.
               </AlertDescription>
             </Alert>
           ) : isApproved ? (
@@ -265,7 +300,7 @@ export default function StudentQRCodePage() {
                 Only the registered scholar can present this QR code to the municipal staff. Do not share this code online.
               </AlertDescription>
             </Alert>
-          ) : null}
+          ) : null)}
 
         </TabsContent>
 

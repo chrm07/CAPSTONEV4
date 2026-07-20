@@ -41,6 +41,7 @@ type ReportScholar = {
   archiveCycle?: string
   year: string
   isClaimed: boolean
+  isCancelled?: boolean
   claimedAt: string
   amountReceived: string
   rejectionReason: string
@@ -144,8 +145,9 @@ export default function ReportsPage() {
           const profile = user?.profileData || {} as any;
           
           let status = "pending";
-          if (app.isApproved) status = "approved";
-          if (app.isRejected) status = "rejected";
+          if (app.isCancelled) status = "cancelled";
+          else if (app.isRejected) status = "rejected";
+          else if (app.isApproved) status = "approved";
 
           return {
             id: app.id, 
@@ -162,6 +164,7 @@ export default function ReportsPage() {
             applicationStatus: status,
             year: new Date().getFullYear().toString(),
             isClaimed: !!app.isClaimed,
+            isCancelled: !!app.isCancelled,
             claimedAt: app.claimedAt ? new Date(app.claimedAt).toLocaleString() : "N/A",
             amountReceived: app.amountReceived ? `₱${app.amountReceived}` : "N/A",
             rejectionReason: app.remarks || app.rejectionReason || (app.isRejected ? "Failed to resubmit required documents / Verification failed" : "N/A"),
@@ -279,11 +282,12 @@ export default function ReportsPage() {
     const approved = approvedList.length;
     const claimed = approvedList.filter(a => a.isClaimed).length;
     const unclaimed = approved - claimed;
+    const cancelled = data.filter(a => a.applicationStatus === "cancelled").length;
     const pending = data.filter(a => a.applicationStatus === "pending").length;
     const rejected = data.filter(a => a.applicationStatus === "rejected").length;
     const pwd = data.filter(a => a.isPWD).length;
     
-    return { total: data.length, approved, claimed, unclaimed, pending, rejected, pwd, approvalRate: data.length > 0 ? Math.round((approved / data.length) * 100) : 0 }
+    return { total: data.length, approved, claimed, unclaimed, cancelled, pending, rejected, pwd, approvalRate: data.length > 0 ? Math.round(((approved + cancelled) / data.length) * 100) : 0 }
   }
 
   const formatCurrency = (amount: string) => amount ? new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(Number(amount)) : "N/A"
@@ -334,11 +338,11 @@ export default function ReportsPage() {
         headers.push("Date Claimed", "Amount Received"); 
       }
       else if (reportType === "Unclaimed") { 
-        filteredData = cycleData.filter(s => s.applicationStatus === "unclaimed" || (s.applicationStatus === "approved" && !s.isClaimed)); 
+        filteredData = cycleData.filter(s => s.applicationStatus === "unclaimed" || (s.applicationStatus === "approved" && !s.isClaimed && !s.isCancelled)); 
         headers.push("Payout Status"); 
       }
       else if (reportType === "Unsuccessful") { 
-        filteredData = cycleData.filter(s => s.applicationStatus === "rejected"); 
+        filteredData = cycleData.filter(s => s.applicationStatus === "rejected" || s.applicationStatus === "cancelled"); 
         headers.push("Reason for Rejection / Remarks"); 
       }
 
@@ -349,9 +353,10 @@ export default function ReportsPage() {
 
       const rows = filteredData.map(s => {
         let displayStatus = s.applicationStatus.toUpperCase();
-        if (s.applicationStatus === "rejected") displayStatus = "UNSUCCESSFUL";
-        if (reportType === "Claimed" || s.isClaimed) displayStatus = "CLAIMED";
-        if (reportType === "Unclaimed" || (s.applicationStatus === "approved" && !s.isClaimed)) displayStatus = "UNCLAIMED";
+        if (s.applicationStatus === "cancelled") displayStatus = "CANCELLED";
+        else if (s.applicationStatus === "rejected") displayStatus = "UNSUCCESSFUL";
+        else if (reportType === "Claimed" || s.isClaimed) displayStatus = "CLAIMED";
+        else if (reportType === "Unclaimed" || (s.applicationStatus === "approved" && !s.isClaimed && !s.isCancelled)) displayStatus = "UNCLAIMED";
 
         const fallbackAmount = (s.amountReceived && s.amountReceived !== "N/A") ? s.amountReceived : scheduledAmount;
         
@@ -777,11 +782,12 @@ export default function ReportsPage() {
                                                       </TableCell>
                                                       <TableCell className="text-center">
                                                         <Badge className={`shadow-none font-bold uppercase tracking-widest text-[9px] border-none ${
+                                                          s.applicationStatus === "cancelled" ? "bg-red-100 text-red-700" :
                                                           s.applicationStatus === "claimed" || s.applicationStatus === "approved" ? "bg-emerald-100 text-emerald-700" : 
                                                           s.applicationStatus === "unclaimed" || s.applicationStatus === "rejected" ? "bg-red-100 text-red-700" : 
                                                           "bg-amber-100 text-amber-700"
                                                         }`}>
-                                                          {s.applicationStatus === "rejected" ? "Unsuccessful" : s.applicationStatus}
+                                                          {s.applicationStatus === "cancelled" ? "Cancelled" : s.applicationStatus === "rejected" ? "Unsuccessful" : s.applicationStatus}
                                                         </Badge>
                                                       </TableCell>
                                                       <TableCell className="pr-4 font-black text-slate-700 text-xs text-right">
