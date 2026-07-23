@@ -45,7 +45,8 @@ import {
   Mail,
   UsersRound,
   Trash2,
-  Check
+  Check,
+  Settings
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -238,6 +239,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   const navigationItems = allNavigationItems.filter((item) => hasPermission(user, item.permission))
 
+  const bottomNavItems = [
+    { href: "/admin/settings", icon: Settings, label: "Settings", permission: "settings" },
+  ].filter((item) => hasPermission(user, item.permission))
+
   const filteredSearchPages = searchQuery.trim() === "" 
     ? [] 
     : navigationItems.filter(page => page.label.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -337,6 +342,21 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               </div>
               
               <div className="border-t border-slate-200 p-4 shrink-0 space-y-1">
+                {bottomNavItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`group flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-bold transition-all ${
+                      isActive(item.href) ? "bg-emerald-600 text-white shadow-md" : "text-slate-600 hover:bg-slate-100"
+                    }`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className="h-5 w-5" />
+                      {item.label}
+                    </div>
+                  </Link>
+                ))}
                 <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-red-600 transition-all hover:bg-red-50" onClick={() => { setIsMobileMenuOpen(false); setIsLogoutDialogOpen(true); }}>
                   <LogOut className="h-5 w-5" /> Logout
                 </button>
@@ -536,6 +556,22 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </div>
 
             <div className="mt-auto pt-4 border-t border-slate-100 space-y-1">
+              {bottomNavItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`group flex items-center justify-between rounded-xl px-3 py-2.5 text-[13px] font-bold transition-all ${
+                    isActive(item.href) 
+                      ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200" 
+                      : "text-slate-500 hover:bg-slate-50 hover:text-emerald-700"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <item.icon className="h-5 w-5" />
+                    {item.label}
+                  </div>
+                </Link>
+              ))}
               <button 
                 onClick={() => setIsLogoutDialogOpen(true)} 
                 className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-bold text-red-600 transition-all hover:bg-red-50"

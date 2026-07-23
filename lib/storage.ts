@@ -5,10 +5,10 @@ import { db } from "./firebase";
 // 1. TYPE DEFINITIONS
 // ============================================================================
 
-export type PermissionKey = "dashboard" | "approvedEmails" | "applications" | "scholars" | "scheduling" | "qrVerification" | "reports"
+export type PermissionKey = "dashboard" | "approvedEmails" | "applications" | "scholars" | "scheduling" | "qrVerification" | "reports" | "settings"
 
 export const ALL_PERMISSIONS: PermissionKey[] = [
-  "dashboard", "approvedEmails", "applications", "scholars", "scheduling", "qrVerification", "reports"
+  "dashboard", "approvedEmails", "applications", "scholars", "scheduling", "qrVerification", "reports", "settings"
 ]
 
 export type Permissions = Record<PermissionKey, boolean>
@@ -21,6 +21,7 @@ export const DEFAULT_PERMISSIONS: Permissions = {
   scheduling: false,
   qrVerification: false,
   reports: false,
+  settings: false,
 }
 
 export type AdminRole = "admin" | "staff" | "head_admin" | "verifier_staff" | "scanner_staff"
@@ -170,6 +171,7 @@ const PERMISSION_ROUTE_MAP: Record<PermissionKey, string> = {
   scheduling: "/admin/scheduling",
   qrVerification: "/admin/verification",
   reports: "/admin/reports",
+  settings: "/admin/settings",
 }
 
 export function getDefaultAdminRoute(user: User | null): string {

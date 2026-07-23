@@ -385,10 +385,6 @@ export default function ApplicationsPage() {
         <AdminLayout>
           <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-12">
             
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Applications</h1>
-              <p className="text-slate-500 font-medium mt-1">Review active submissions and browse historical records.</p>
-            </div>
 
             <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
               <div className="h-2 bg-gradient-to-r from-blue-400 to-blue-600" />

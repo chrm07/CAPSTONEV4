@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { AdminLayout } from "@/components/admin-layout"
-import { FileText, Clock, LayoutDashboard, CheckCircle, XCircle, Calendar, Loader2, ChevronRight, Users } from "lucide-react"
+import { FileText, Clock, CheckCircle, XCircle, Calendar, Loader2, ChevronRight, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -173,24 +173,7 @@ export default function AdminDashboard() {
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 animate-fade-in pb-12">
-        {/* Hero Header */}
-        <div className="relative overflow-hidden rounded-3xl bg-white border border-slate-200 shadow-sm p-6 sm:p-8">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-400 rounded-full filter blur-[80px] opacity-10 -mr-20 -mt-20 pointer-events-none"></div>
-          <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div className="flex items-center gap-4 sm:gap-6">
-              <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shrink-0">
-                <LayoutDashboard className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 uppercase">Admin Dashboard</h1>
-                <p className="text-sm sm:text-base text-slate-500 font-medium mt-1">Manage active applications and monitor cycle statistics.</p>
-              </div>
-            </div>
-            <Badge className="bg-emerald-100 text-emerald-800 text-sm sm:text-lg px-4 py-2 border-none shadow-none font-black uppercase tracking-widest self-start sm:self-auto">
-              Active Cycle
-            </Badge>
-          </div>
-        </div>
+
 
         {/* MOBILE RESPONSIVE STAT CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">

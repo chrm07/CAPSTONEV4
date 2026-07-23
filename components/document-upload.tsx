@@ -165,7 +165,9 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
       return
     }
 
-    if (file.size > 10 * 1024 * 1024) return toast({ variant: "destructive", title: "Upload failed", description: "File size exceeds 10MB limit." })
+    if (!file.type || !file.type.includes("pdf")) return toast({ variant: "destructive", title: "Upload failed", description: "Only PDF files are allowed." })
+
+    if (file.size > 10 * 1024 * 1024) return toast({ variant: "destructive", title: "Upload failed", description: "File size must not exceed 10 MB." })
 
     const fileSize = formatFileSize(file.size)
     setDocuments(prev => ({ ...prev, [documentType]: { ...prev[documentType], isUploading: true, progress: 30, fileName: file.name, fileSize, error: null } }))
@@ -287,15 +289,15 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
   const handleMouseUp = () => setIsDragging(false)
 
   const documentConfigs = [
-    { type: "appForm", title: "1. Filled-out Application Form", typeDesc: ".pdf,.jpg,.jpeg,.png", icon: FileText, required: true },
-    { type: "regForm", title: "2. School Registration Form", typeDesc: ".pdf,.jpg,.jpeg,.png", icon: FileText, required: true },
-    { type: "receipt", title: "3. Enrollment Receipt", typeDesc: ".pdf,.jpg,.jpeg,.png", icon: FileText, required: true },
-    { type: "schoolId", title: "4. School ID / Cert of Non-issuance", typeDesc: ".pdf,.jpg,.jpeg,.png", icon: ImageIcon, required: true },
-    { type: "indigency", title: "5. Original Barangay Indigency", typeDesc: ".pdf,.jpg,.jpeg,.png", icon: FileText, required: true },
-    { type: "clearance", title: "6. Original Barangay Clearance", typeDesc: ".pdf,.jpg,.jpeg,.png", icon: FileText, required: true },
-    { type: "mayorLetter", title: "7. Letter to City Mayor", typeDesc: ".pdf,.jpg,.jpeg,.png", icon: FileText, required: true },
-    { type: "votersCert", title: "8. Voter's Certification", typeDesc: ".pdf,.jpg,.jpeg,.png", icon: FileText, required: true },
-    { type: "grades", title: "9. Previous Grades", typeDesc: ".pdf,.jpg,.jpeg,.png", icon: FileText, required: true },
+    { type: "appForm", title: "1. Filled-out Application Form", typeDesc: ".pdf", icon: FileText, required: true },
+    { type: "regForm", title: "2. School Registration Form", typeDesc: ".pdf", icon: FileText, required: true },
+    { type: "receipt", title: "3. Enrollment Receipt", typeDesc: ".pdf", icon: FileText, required: true },
+    { type: "schoolId", title: "4. School ID / Cert of Non-issuance", typeDesc: ".pdf", icon: ImageIcon, required: true },
+    { type: "indigency", title: "5. Original Barangay Indigency", typeDesc: ".pdf", icon: FileText, required: true },
+    { type: "clearance", title: "6. Original Barangay Clearance", typeDesc: ".pdf", icon: FileText, required: true },
+    { type: "mayorLetter", title: "7. Letter to City Mayor", typeDesc: ".pdf", icon: FileText, required: true },
+    { type: "votersCert", title: "8. Voter's Certification", typeDesc: ".pdf", icon: FileText, required: true },
+    { type: "grades", title: "9. Previous Grades", typeDesc: ".pdf", icon: FileText, required: true },
   ]
 
   const uploadedCount = Object.values(documents).filter((d) => d.isUploaded).length
@@ -398,7 +400,11 @@ export function DocumentUpload({ onUploadComplete }: DocumentUploadProps) {
                       <Input id={config.type} type="file" accept={config.typeDesc} className="hidden" onChange={(e) => handleFileChange(config.type, config.typeDesc, e)} disabled={isLocked} />
                       <Label htmlFor={config.type} className={`flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-xl transition-colors ${isLocked ? "cursor-not-allowed opacity-50" : "hover:border-green-500 hover:bg-muted/50 cursor-pointer"}`}>
                         <Upload className="h-6 w-6 text-muted-foreground mb-2" />
-                        <span className="text-sm font-medium text-slate-600">Click to browse or drag file</span>
+                        <span className="text-sm font-medium text-slate-600">Select PDF File</span>
+                        <p className="text-[10px] text-muted-foreground font-medium mt-1.5 leading-tight text-center">
+                          Accepted format: PDF only<br />
+                          Maximum file size: 10 MB
+                        </p>
                       </Label>
                     </div>
                   )}

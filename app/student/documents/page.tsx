@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/components/ui/use-toast"
 import { 
-  FileText, CheckCircle, AlertCircle, Trash2, 
+  CheckCircle, AlertCircle, Trash2, 
   Eye, Loader2, Lock, Download, X, CalendarDays, UploadCloud
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -18,23 +18,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogClose,
+  DialogDescription,
 } from "@/components/ui/dialog"
 
-import { collection, query, where, onSnapshot, doc, deleteDoc, addDoc, updateDoc } from "firebase/firestore"
+import { collection, query, where, onSnapshot, doc, deleteDoc, addDoc, updateDoc, orderBy } from "firebase/firestore"
 import { db } from "@/lib/firebase" 
 import { createDocumentDb, createApplicationDb, notifyAdminsDb, isSubmissionActive } from "@/lib/storage"
-
-const REQUIRED_DOC_TYPES = [
-  { id: "app_form", name: "Filled-out Application Form" },
-  { id: "reg_form", name: "School Registration Form" },
-  { id: "receipt", name: "Enrollment Receipt" },
-  { id: "id_cert", name: "School ID / Cert of Non-issuance" },
-  { id: "indigency", name: "Original Barangay Indigency" },
-  { id: "clearance", name: "Original Barangay Clearance" },
-  { id: "mayor_letter", name: "Letter to City Mayor" },
-  { id: "voter_cert", name: "Voter's Certification" },
-  { id: "grades", name: "Previous Grades" }
-]
 
 export default function StudentDocumentsPage() {
   const { user } = useAuth()
@@ -43,12 +32,14 @@ export default function StudentDocumentsPage() {
   const [documents, setDocuments] = useState<any[]>([])
   const [application, setApplication] = useState<any>(null)
   const [schedule, setSchedule] = useState<any>(null) 
+  const [requirements, setRequirements] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   
   // Track individual file uploading states
   const [uploadingDocs, setUploadingDocs] = useState<Record<string, boolean>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [viewingDoc, setViewingDoc] = useState<{ url: string; name: string; isPdf: boolean } | null>(null)
+  const [showSubmitModal, setShowSubmitModal] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -58,6 +49,11 @@ export default function StudentDocumentsPage() {
 
     unsubs.push(onSnapshot(doc(db, "settings", "schedule"), (docSnap) => {
       if (docSnap.exists()) setSchedule(docSnap.data())
+    }))
+
+    unsubs.push(onSnapshot(query(collection(db, "requirements"), orderBy("order", "asc")), (snapshot) => {
+      const reqs = snapshot.docs.map(d => ({ id: d.id, name: d.data().name || d.id }));
+      setRequirements(reqs);
     }))
 
     const docsQ = query(collection(db, "documents"), where("studentId", "==", user.id))
@@ -87,7 +83,7 @@ export default function StudentDocumentsPage() {
   const isLocked = !canUpload;
   
   // Calculate completed count purely from database documents
-  const uploadedCount = REQUIRED_DOC_TYPES.filter(req => 
+  const uploadedCount = requirements.filter(req => 
     documents.some(d => (d.categoryName || d.name) === req.name)
   ).length;
   
@@ -103,7 +99,7 @@ export default function StudentDocumentsPage() {
     : 0;
   const hasAllDocuments = isResubmission 
     ? uploadedResubmitDocs === requiredResubmitDocs && requiredResubmitDocs > 0
-    : uploadedCount === REQUIRED_DOC_TYPES.length;
+    : uploadedCount === requirements.length;
 
   // Immediate upload to Cloudinary and Firebase DB
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, reqName: string) => {
@@ -111,8 +107,14 @@ export default function StudentDocumentsPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: "destructive", title: "File too large", description: "Please upload a file smaller than 5MB." })
+    if (!file.type || !file.type.includes("pdf")) {
+      toast({ variant: "destructive", title: "Invalid file type", description: "Only PDF files are allowed." })
+      e.target.value = ''
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "File too large", description: "File size must not exceed 10 MB." })
       e.target.value = ''
       return
     }
@@ -258,10 +260,6 @@ export default function StudentDocumentsPage() {
     <StudentLayout>
       <div className="max-w-6xl mx-auto space-y-8 animate-fade-in pb-12">
         
-        <div className="space-y-2">
-          <h1 className="text-3xl font-black tracking-tight text-emerald-900 uppercase">Document Portal</h1>
-          <p className="text-slate-500 font-medium">Follow the steps below to complete your application.</p>
-        </div>
 
         {application?.status === 'rejected' && (
           <Alert variant="destructive" className="bg-red-50 border-red-200 rounded-3xl p-6">
@@ -327,7 +325,7 @@ export default function StudentDocumentsPage() {
             }`}>
               {application?.status === 'rejected' && application?.resubmitDocuments 
                 ? `${application.resubmitDocuments.length} document(s) need resubmission`
-                : `${uploadedCount} / ${REQUIRED_DOC_TYPES.length} Completed`
+                : `${uploadedCount} / ${requirements.length} Completed`
               }
             </Badge>
           </div>
@@ -343,14 +341,14 @@ export default function StudentDocumentsPage() {
                   ? `${(application.resubmitDocuments.filter((doc: string) => 
                       documents.some(d => (d.categoryName || d.name) === doc)
                     ).length / application.resubmitDocuments.length) * 100}%`
-                  : `${(uploadedCount / REQUIRED_DOC_TYPES.length) * 100}%`
+                  : `${(uploadedCount / Math.max(requirements.length, 1)) * 100}%`
               }} 
             />
           </div>
         </div>
 
         <div className={`grid gap-6 md:grid-cols-2 lg:grid-cols-3 ${!isSubmissionActive(schedule) ? "opacity-60 grayscale" : ""}`}>
-          {REQUIRED_DOC_TYPES.map((req) => {
+          {requirements.map((req) => {
             const dbDoc = documents.find(d => (d.categoryName || d.name) === req.name)
             const hasDoc = !!dbDoc
             const isUploading = uploadingDocs[req.name]
@@ -418,9 +416,13 @@ export default function StudentDocumentsPage() {
                         <label className={`cursor-pointer group flex flex-col items-center justify-center py-4 border-2 border-dashed rounded-2xl transition-all ${isResubmitRequested ? 'border-red-200 bg-red-50/50 hover:bg-red-100/80' : 'border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100/80'}`}>
                           <UploadCloud className={`h-5 w-5 ${isResubmitRequested ? 'text-red-600' : 'text-emerald-500'} mb-1 group-hover:scale-110 transition-transform`} />
                           <span className={`text-[10px] font-black uppercase tracking-widest ${isResubmitRequested ? 'text-red-700' : 'text-emerald-700'}`}>
-                            {isResubmitRequested ? 'Upload Replacement' : 'Select File'}
+                            {isResubmitRequested ? 'Upload Replacement' : 'Select PDF File'}
                           </span>
-                          <input type="file" className="hidden" accept=".pdf,image/*" onChange={(e) => handleFileSelect(e, req.name)} disabled={!canUpload || isSubmitting} />
+                          <input type="file" className="hidden" accept=".pdf" onChange={(e) => handleFileSelect(e, req.name)} disabled={!canUpload || isSubmitting} />
+                          <p className="text-[9px] text-gray-400 font-medium mt-1.5 leading-tight text-center">
+                            Accepted format: PDF only<br />
+                            Maximum file size: 10 MB
+                          </p>
                         </label>
                       )}
                     </div>
@@ -431,7 +433,7 @@ export default function StudentDocumentsPage() {
           })}
         </div>
 
-        {/* SUBMIT CONTAINER & WARNING REMARK */}
+        {/* SUBMIT CONTAINER */}
         {canUpload && (
            <div className={`p-6 md:p-8 rounded-3xl border flex flex-col items-center justify-between gap-6 shadow-sm ${hasAllDocuments ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
              
@@ -455,13 +457,13 @@ export default function StudentDocumentsPage() {
                         : `Please upload the ${application.resubmitDocuments?.length || 0} required document(s) before resubmitting.`)
                      : (hasAllDocuments 
                         ? "You have uploaded all required documents. Submit your application to lock them in."
-                        : `You must select all ${REQUIRED_DOC_TYPES.length} documents before you can submit.`)
+                        : `You must select all ${requirements.length} documents before you can submit.`)
                    }
                  </p>
                </div>
-               <Button 
-                 onClick={handleSubmitApplication} 
-                 disabled={isSubmitting || !hasAllDocuments} 
+                <Button 
+                  onClick={() => setShowSubmitModal(true)} 
+                  disabled={isSubmitting || !hasAllDocuments} 
                  className={`w-full md:w-auto shrink-0 font-black px-8 h-14 rounded-2xl text-lg shadow-lg active:scale-95 transition-transform ${
                    application?.status === 'rejected'
                      ? (hasAllDocuments ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-red-300 text-red-800 cursor-not-allowed')
@@ -473,16 +475,47 @@ export default function StudentDocumentsPage() {
                </Button>
              </div>
 
-             {/* WARNING NOTE */}
-             <div className="w-full bg-amber-50/80 border border-amber-200 text-amber-800 p-4 md:p-5 rounded-2xl flex items-start gap-3 mt-2">
-               <AlertCircle className="h-5 w-5 md:h-6 md:w-6 text-amber-600 shrink-0 mt-0.5" />
-               <p className="text-sm md:text-base font-bold leading-snug">
-                 Please ensure you have uploaded the correct documents as they will be reviewed by the admin. Once submitted, your files will be locked and you cannot change them temporarily. You will only be able to edit or upload new files if the admin requires a resubmission.
-               </p>
-             </div>
-
-           </div>
+            </div>
         )}
+
+        <Dialog open={showSubmitModal} onOpenChange={setShowSubmitModal}>
+          <DialogContent aria-describedby={undefined} className="max-w-lg w-[95vw] rounded-3xl shadow-2xl border-none p-0 overflow-hidden z-[100]">
+            <DialogHeader className="p-6 pb-4 bg-white border-b border-slate-200">
+              <DialogTitle className="text-lg font-black uppercase text-emerald-900">
+                Submit Application
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                Confirm submission of all required documents
+              </DialogDescription>
+            </DialogHeader>
+            <div className="p-6 pt-4 space-y-4">
+              <p className="text-base font-bold text-slate-800">
+                Are you sure you want to submit all the required documents?
+              </p>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Please ensure that you have uploaded the correct documents because they will be reviewed by the administrator. Once submitted, your uploaded files will be locked and cannot be edited or replaced temporarily. You will only be allowed to upload or modify your documents again if the administrator requests a resubmission.
+              </p>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 h-12 rounded-2xl font-bold border-slate-200 text-slate-600 hover:bg-slate-50"
+                  onClick={() => setShowSubmitModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 h-12 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg"
+                  onClick={() => {
+                    setShowSubmitModal(false)
+                    handleSubmitApplication()
+                  }}
+                >
+                  Submit Application
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={!!viewingDoc} onOpenChange={(open) => !open && setViewingDoc(null)}>
           <DialogContent aria-describedby={undefined} className="max-w-5xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden bg-slate-900 border-none rounded-3xl shadow-2xl [&>button]:hidden z-[100]">

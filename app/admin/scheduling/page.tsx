@@ -15,7 +15,7 @@ import { PermissionGuard } from "@/components/permission-guard"
 import { DataPagination } from "@/components/data-pagination"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { 
-  CalendarDays, Plus, Loader2, Banknote, Clock, MapPin, StopCircle, UploadCloud, RotateCcw, ChevronDown, ChevronRight, Search, Edit, Trash2, Archive, Users
+  CalendarDays, Plus, Loader2, Banknote, Clock, MapPin, StopCircle, UploadCloud, RotateCcw, ChevronDown, ChevronRight, Search, Archive, Users
 } from "lucide-react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 
@@ -31,11 +31,29 @@ type Barangay = {
   updatedAt: string;
 }
 
+const formatCurrency = (amount: string) => amount ? new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(Number(amount)) : "N/A"
+
+const formatDate = (dateValue: any) => {
+  if (!dateValue) return "N/A";
+  const date = new Date(dateValue);
+  return isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+};
+
+const formatTime = (time: string) => {
+  if (!time) return "N/A"
+  const [hours, minutes] = time.split(":")
+  const h = parseInt(hours, 10)
+  const ampm = h >= 12 ? "PM" : "AM"
+  const hour12 = h % 12 || 12
+  return `${hour12}:${minutes} ${ampm}`
+}
+
 const DateWindowDisplay = ({ start, end }: { start?: string, end?: string }) => (
   <div className="flex flex-col items-center justify-center text-center py-1">
-    <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap">{start || "N/A"}</span>
-    <span className="text-[9px] font-black text-slate-400 my-0.5 tracking-widest uppercase">TO</span>
-    <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap">{end || "N/A"}</span>
+    <span className="text-[9px] font-black text-slate-400 tracking-widest uppercase">Start Date</span>
+    <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap">{formatDate(start)}</span>
+    <span className="text-[9px] font-black text-slate-400 mt-1 tracking-widest uppercase">End Date</span>
+    <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap">{formatDate(end)}</span>
   </div>
 );
 
@@ -58,18 +76,7 @@ export default function SchedulingPage() {
   const [isSubModalOpen, setIsSubModalOpen] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   
-  const [isManageBarangaysOpen, setIsManageBarangaysOpen] = useState(false)
-  const [barangaySearch, setBarangaySearch] = useState("")
-  
   const [barangaySelectionSearch, setBarangaySelectionSearch] = useState("")
-  
-  const [isBarangayFormOpen, setIsBarangayFormOpen] = useState(false)
-  const [editingBarangay, setEditingBarangay] = useState<Barangay | null>(null)
-  const [barangayFormName, setBarangayFormName] = useState("")
-  const [isSavingBarangay, setIsSavingBarangay] = useState(false)
-
-  const [isDeleteBarangayOpen, setIsDeleteBarangayOpen] = useState(false)
-  const [barangayToDelete, setBarangayToDelete] = useState<Barangay | null>(null)
 
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false)
   const [isCloseSubDialogOpen, setIsCloseSubDialogOpen] = useState(false)
@@ -348,75 +355,6 @@ export default function SchedulingPage() {
     }
   };
 
-  const handleSaveBarangay = async () => {
-    if (!barangayFormName.trim()) {
-      toast({ variant: "destructive", title: "Error", description: "Barangay name cannot be empty." });
-      return;
-    }
-
-    const isDuplicate = barangaysList.some(b => b.name.toLowerCase() === barangayFormName.trim().toLowerCase() && b.id !== editingBarangay?.id);
-    if (isDuplicate) {
-      toast({ variant: "destructive", title: "Error", description: "A barangay with this name already exists." });
-      return;
-    }
-
-    setIsSavingBarangay(true);
-    try {
-      const now = new Date().toISOString();
-      let updatedList;
-      
-      if (editingBarangay) {
-        const oldName = editingBarangay.name;
-        const newName = barangayFormName.trim();
-        
-        updatedList = barangaysList.map(b => b.id === editingBarangay.id ? { ...b, name: newName, updatedAt: now } : b);
-        
-        if (oldName !== newName) {
-           const batch = writeBatch(db);
-           
-           const usersSnap = await getDocs(query(collection(db, "users"), where("profileData.barangay", "==", oldName)));
-           usersSnap.forEach(userDoc => {
-               batch.update(userDoc.ref, { "profileData.barangay": newName });
-           });
-           
-           const appsSnap = await getDocs(query(collection(db, "applications"), where("barangay", "==", oldName)));
-           appsSnap.forEach(appDoc => {
-               batch.update(appDoc.ref, { "barangay": newName });
-           });
-           
-           await batch.commit();
-        }
-      } else {
-        const newBarangay = { id: Math.random().toString(36).substr(2, 9), name: barangayFormName.trim(), createdAt: now, updatedAt: now };
-        updatedList = [...barangaysList, newBarangay];
-      }
-
-      await setDoc(doc(db, "settings", "barangays"), { list: updatedList }, { merge: true });
-      toast({ title: "Success", description: editingBarangay ? "Barangay updated & synced successfully." : "Barangay added successfully.", className: "bg-emerald-600 text-white" });
-      setIsBarangayFormOpen(false);
-      setBarangayFormName("");
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to save and sync barangay." });
-    } finally {
-      setIsSavingBarangay(false);
-    }
-  }
-
-  const confirmDeleteBarangay = async () => {
-    if (!barangayToDelete) return;
-    setIsSavingBarangay(true);
-    try {
-      const updatedList = barangaysList.filter(b => b.id !== barangayToDelete.id);
-      await setDoc(doc(db, "settings", "barangays"), { list: updatedList }, { merge: true });
-      toast({ title: "Success", description: "Barangay removed successfully." });
-      setIsDeleteBarangayOpen(false);
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to delete barangay." });
-    } finally {
-      setIsSavingBarangay(false);
-    }
-  }
-
   const resetForm = () => { 
     setFormData({ barangays: [], startDate: "", endDate: "", startTime: "", distributionAmount: "" });
     setBarangaySelectionSearch("");
@@ -425,14 +363,6 @@ export default function SchedulingPage() {
   }
 
   const toggleBarangay = (barangayName: string) => { setFormData(prev => ({ ...prev, barangays: prev.barangays.includes(barangayName) ? prev.barangays.filter(b => b !== barangayName) : [...prev.barangays, barangayName] })) }
-
-  const formatCurrency = (amount: string) => amount ? new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(Number(amount)) : "N/A"
-  
-  const formatDate = (dateValue: any) => {
-    if (!dateValue) return "N/A";
-    const date = new Date(dateValue);
-    return isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-  };
 
   const availableYears = useMemo(() => {
     const years = new Set(scheduleHistory.map(h => new Date(h.endedAt).getFullYear().toString()));
@@ -454,10 +384,6 @@ export default function SchedulingPage() {
     if (historyPage > maxPage && maxPage > 0) setHistoryPage(maxPage);
   }, [filteredHistory.length, historyPage]);
 
-  const filteredBarangays = useMemo(() => {
-    return barangaysList.filter(b => b.name.toLowerCase().includes(barangaySearch.toLowerCase()));
-  }, [barangaysList, barangaySearch]);
-
   const filteredSelectionBarangays = useMemo(() => {
     return barangaysList.filter(b => b.name.toLowerCase().includes(barangaySelectionSearch.toLowerCase()));
   }, [barangaysList, barangaySelectionSearch]);
@@ -467,20 +393,6 @@ export default function SchedulingPage() {
       <AdminLayout>
         <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-12">
           
-          <div className="relative overflow-hidden rounded-3xl bg-white border border-slate-200 shadow-sm p-8">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-400 rounded-full filter blur-[80px] opacity-10 -mr-20 -mt-20 pointer-events-none"></div>
-            <div className="relative flex items-center justify-between gap-6">
-              <div className="flex items-center gap-6">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shrink-0">
-                  <CalendarDays className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-black tracking-tight text-slate-900 uppercase">Global Scheduling</h1>
-                  <p className="text-slate-500 font-medium mt-1">Control submission and distribution portals.</p>
-                </div>
-              </div>
-            </div>
-          </div>
 
           <Tabs defaultValue="submissions" className="space-y-6">
             <TabsList className="bg-slate-100/50 p-1.5 shadow-sm flex flex-wrap h-auto w-full lg:w-fit justify-start rounded-2xl border border-slate-200 gap-1">
@@ -520,16 +432,18 @@ export default function SchedulingPage() {
                     <Table>
                       <TableHeader className="bg-white">
                         <TableRow className="border-slate-100">
-                          <TableHead className="pl-6 font-black text-slate-400 uppercase text-[10px] tracking-widest py-4">Date Range</TableHead>
+                          <TableHead className="pl-6 font-black text-slate-400 uppercase text-[10px] tracking-widest py-4">Schedule</TableHead>
                           <TableHead className="font-black text-slate-400 uppercase text-[10px] tracking-widest">Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody className="bg-white">
                         <TableRow className="hover:bg-slate-50 transition-colors border-slate-100">
                           <TableCell className="pl-6 py-4">
-                            <div className="flex flex-col">
-                              <span className="text-sm font-bold text-slate-800">{schedule.submissionStart}</span>
-                              <span className="text-[10px] text-slate-500 uppercase tracking-widest">to {schedule.submissionEnd}</span>
+                            <div className="flex flex-col items-start gap-1">
+                              <span className="text-[9px] font-black text-slate-400 tracking-widest uppercase">Start Date</span>
+                              <span className="text-sm font-bold text-slate-800">{formatDate(schedule.submissionStart)}</span>
+                              <span className="text-[9px] font-black text-slate-400 mt-1 tracking-widest uppercase">End Date</span>
+                              <span className="text-sm font-bold text-slate-800">{formatDate(schedule.submissionEnd)}</span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -561,9 +475,6 @@ export default function SchedulingPage() {
                   </div>
                   
                   <div className="flex flex-wrap gap-3">
-                    <Button variant="outline" onClick={() => setIsManageBarangaysOpen(true)} className="rounded-xl font-bold h-11 px-4 border-slate-200 text-slate-600 bg-white hover:bg-slate-50">
-                      <MapPin className="w-4 h-4 mr-2" /> Manage Barangays
-                    </Button>
                     {!isDistributionActive(schedule) ? (
                       <Button onClick={() => setIsAddModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md font-bold h-11 px-6">
                         <Plus className="w-4 h-4 mr-2" /> Open Distribution
@@ -608,9 +519,9 @@ export default function SchedulingPage() {
                                   <TableCell className="pl-6 py-4">
                                     <div className="flex items-start gap-3">
                                       <MapPin className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-                                      <div className="flex flex-wrap gap-2 max-w-[280px]">
+                                      <div className="flex flex-col gap-2">
                                         {schedule.targetBarangays?.map((b: string) => (
-                                          <Badge key={b} className="bg-emerald-50 text-emerald-700 border border-emerald-200 font-black px-2.5 py-1 uppercase tracking-wider text-[10px] shadow-sm">
+                                          <Badge key={b} className="bg-emerald-50 text-emerald-700 border border-emerald-200 font-black px-2.5 py-1 uppercase tracking-wider text-[10px] shadow-sm w-fit">
                                             {b}
                                           </Badge>
                                         ))}
@@ -624,9 +535,9 @@ export default function SchedulingPage() {
                                     <DateWindowDisplay start={schedule.distributionStart} end={schedule.distributionEnd} />
                                   </TableCell>
                                   <TableCell>
-                                    <div className="flex items-center justify-center gap-2 text-xs font-bold text-slate-700">
+                                  <div className="flex items-center justify-center gap-2 text-xs font-bold text-slate-700">
                                       <Clock className="h-4 w-4 text-amber-600/60" />
-                                      {schedule.distributionTime || "N/A"}
+                                      {formatTime(schedule.distributionTime)}
                                     </div>
                                   </TableCell>
                                   <TableCell className="text-center">
@@ -681,7 +592,7 @@ export default function SchedulingPage() {
                                     <TableCell>
                                       <div className="flex items-center justify-center gap-2 text-xs font-bold text-slate-700">
                                         <Clock className="h-4 w-4 text-purple-600/60" />
-                                        {schedule.distributionTime || "N/A"}
+                                      {formatTime(schedule.distributionTime)}
                                       </div>
                                     </TableCell>
                                     <TableCell className="text-center">
@@ -828,9 +739,9 @@ export default function SchedulingPage() {
                                             <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
                                               <MapPin className="h-4 w-4 text-emerald-500 shrink-0" /> Targeted Barangays
                                             </h4>
-                                            <div className="flex flex-wrap gap-2">
+                                            <div className="flex flex-col gap-2">
                                               {hist.targetBarangays?.map((b: string) => (
-                                                <Badge key={b} className="bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-2.5 py-1 uppercase tracking-wider text-[10px] shadow-sm">
+                                                <Badge key={b} className="bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-2.5 py-1 uppercase tracking-wider text-[10px] shadow-sm w-fit">
                                                   {b}
                                                 </Badge>
                                               ))}
@@ -846,14 +757,19 @@ export default function SchedulingPage() {
                                               <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center justify-center gap-2 mb-1">
                                                 <Clock className="h-4 w-4 text-amber-500 shrink-0" /> Time
                                               </h4>
-                                              <p className="text-xs font-bold text-slate-700">{hist.distributionTime || "N/A"}</p>
+                                              <p className="text-xs font-bold text-slate-700">{formatTime(hist.distributionTime)}</p>
                                             </div>
                                             {hist.isExtended && (
                                               <div>
                                                 <h4 className="text-[11px] font-black uppercase tracking-widest text-purple-500 flex items-center justify-center gap-2 mb-1">
                                                   <CalendarDays className="h-4 w-4 text-purple-400 shrink-0" /> Extension
                                                 </h4>
-                                                <p className="text-xs font-bold text-slate-700">{hist.extensionStart} TO {hist.extensionEnd}</p>
+                                                <div className="flex flex-col items-center gap-1">
+                                                  <span className="text-[9px] font-black text-slate-400 tracking-widest uppercase">Start Date</span>
+                                                  <p className="text-xs font-bold text-slate-700">{formatDate(hist.extensionStart)}</p>
+                                                  <span className="text-[9px] font-black text-slate-400 mt-1 tracking-widest uppercase">End Date</span>
+                                                  <p className="text-xs font-bold text-slate-700">{formatDate(hist.extensionEnd)}</p>
+                                                </div>
                                               </div>
                                             )}
                                           </div>
@@ -891,57 +807,6 @@ export default function SchedulingPage() {
             </TabsContent>
 
           </Tabs>
-
-          {/* MANAGE BARANGAYS MODAL */}
-          <Dialog open={isManageBarangaysOpen} onOpenChange={(open) => { setIsManageBarangaysOpen(open); if (open) setBarangaySearch(""); }}>
-            <DialogContent className="sm:max-w-4xl max-h-[90vh] rounded-3xl border-0 shadow-2xl p-0 overflow-hidden flex flex-col bg-slate-50">
-              <div className="h-2 bg-emerald-600 w-full shrink-0" />
-              <DialogHeader className="px-8 py-6 border-b shrink-0 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <DialogTitle className="text-2xl font-black uppercase text-slate-800 tracking-tight flex items-center gap-2"><MapPin className="h-6 w-6 text-emerald-600" /> Manage Barangays</DialogTitle>
-                  <DialogDescription className="font-medium text-slate-500 mt-1">Maintain the list of barangays globally available for student registration and payouts.</DialogDescription>
-                </div>
-                <Button onClick={() => { setEditingBarangay(null); setBarangayFormName(""); setIsBarangayFormOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md font-bold h-12 px-8 shrink-0 text-base"><Plus className="w-5 h-5 mr-2" /> Add Barangay</Button>
-              </DialogHeader>
-              <div className="flex-1 overflow-hidden px-8 py-6 flex flex-col gap-6 min-h-0">
-                <div className="relative shrink-0">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none" />
-                  <Input placeholder="Search all barangays..." value={barangaySearch} onChange={(e) => setBarangaySearch(e.target.value)} className="pl-12 h-14 rounded-2xl bg-white border-slate-200 shadow-sm font-medium text-lg" />
-                </div>
-                <div className="flex-1 overflow-y-auto pr-2">
-                  {filteredBarangays.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                      <MapPin className="h-12 w-12 mb-4 opacity-20" />
-                      <p className="font-black text-xl text-slate-500 uppercase tracking-tight">No barangays found</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      {filteredBarangays.map((barangay, index) => (
-                        <div key={barangay.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-4 hover:border-emerald-400 hover:shadow-md transition-all">
-                          <div className="flex items-center gap-4 overflow-hidden">
-                            <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0 border border-emerald-100 shadow-sm">
-                              <span className="font-black text-xl">{index + 1}</span>
-                            </div>
-                            <span className="font-black text-slate-900 text-xl uppercase tracking-tight whitespace-nowrap">{barangay.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <Button variant="outline" onClick={() => { setEditingBarangay(barangay); setBarangayFormName(barangay.name); setIsBarangayFormOpen(true); }} className="h-12 px-5 rounded-xl border-slate-200 text-blue-600 hover:bg-blue-50 font-bold text-base"><Edit className="h-5 w-5 sm:mr-2" /><span className="hidden sm:inline">Edit</span></Button>
-                            <Button variant="outline" onClick={() => { setBarangayToDelete(barangay); setIsDeleteBarangayOpen(true); }} className="h-12 px-5 rounded-xl border-slate-200 text-red-600 hover:bg-red-50 font-bold text-base"><Trash2 className="h-5 w-5 sm:mr-2" /><span className="hidden sm:inline">Delete</span></Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <DialogFooter className="px-8 py-4 border-t bg-white shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.02)] z-10">
-                <div className="flex w-full items-center justify-between">
-                  <div className="text-sm font-bold text-slate-500">Total Barangays: <span className="text-slate-800 text-lg ml-1">{filteredBarangays.length}</span></div>
-                  <Button variant="outline" onClick={() => setIsManageBarangaysOpen(false)} className="rounded-xl font-bold h-12 px-10 text-slate-600 text-base">Close</Button>
-                </div>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
 
           {/* DISTRIBUTION SELECTION MODAL */}
           <Dialog open={isAddModalOpen} onOpenChange={(open) => { setIsAddModalOpen(open); if (!open) { setDistributionStep(1); } }}>
@@ -1062,62 +927,6 @@ export default function SchedulingPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-
-          {/* NESTED ADD/EDIT BARANGAY MODAL */}
-          <Dialog open={isBarangayFormOpen} onOpenChange={setIsBarangayFormOpen}>
-            <DialogContent className="sm:max-w-[450px] rounded-3xl p-6 shadow-2xl border-0">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-black uppercase tracking-tight text-slate-800">
-                  {editingBarangay ? "Edit Barangay" : "Add New Barangay"}
-                </DialogTitle>
-                <DialogDescription className="font-medium text-slate-500">
-                  {editingBarangay ? "Modify the name of the existing barangay." : "Enter a unique name to add it to the global list."}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="py-4 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="barangayName" className="text-xs font-bold uppercase tracking-wider text-slate-700">Barangay Name <span className="text-red-500">*</span></Label>
-                  <Input 
-                    id="barangayName"
-                    autoFocus
-                    placeholder="e.g. Barangay 1" 
-                    value={barangayFormName}
-                    onChange={(e) => setBarangayFormName(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveBarangay() }}
-                    className="h-12 rounded-xl bg-slate-50 focus:bg-white text-base font-bold uppercase"
-                  />
-                </div>
-              </div>
-              <DialogFooter className="gap-2 sm:gap-0 mt-4">
-                <Button variant="outline" onClick={() => setIsBarangayFormOpen(false)} disabled={isSavingBarangay} className="rounded-xl font-bold border-slate-200 h-11 px-6">Cancel</Button>
-                <Button onClick={handleSaveBarangay} disabled={isSavingBarangay} className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md h-11 px-8">
-                  {isSavingBarangay ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  {editingBarangay ? "Save Changes" : "Add Barangay"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* DELETE CONFIRMATION DIALOG */}
-          <AlertDialog open={isDeleteBarangayOpen} onOpenChange={setIsDeleteBarangayOpen}>
-            <AlertDialogContent className="rounded-3xl border-0 shadow-2xl p-6">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-xl font-black text-slate-800 uppercase tracking-tight flex items-center gap-2">
-                  <Trash2 className="h-5 w-5 text-red-500" /> Confirm Deletion
-                </AlertDialogTitle>
-                <AlertDialogDescription className="font-medium text-slate-600 text-base">
-                  Are you sure you want to delete <span className="font-black text-slate-900 uppercase">"{barangayToDelete?.name}"</span>? This will remove it from the registration dropdown and cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="mt-6">
-                <AlertDialogCancel disabled={isSavingBarangay} className="rounded-xl font-bold border-slate-200 text-slate-600 h-11 px-6">Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={(e) => { e.preventDefault(); confirmDeleteBarangay(); }} disabled={isSavingBarangay} className="bg-red-600 hover:bg-red-700 rounded-xl font-bold text-white shadow-md h-11 px-6">
-                  {isSavingBarangay ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  {isSavingBarangay ? "Deleting..." : "Yes, Delete"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
 
           {/* SUBMISSION MODAL - ENHANCED */}
           <Dialog open={isSubModalOpen} onOpenChange={setIsSubModalOpen}>

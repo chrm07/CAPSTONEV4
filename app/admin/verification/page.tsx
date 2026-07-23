@@ -454,20 +454,6 @@ export default function QRVerificationPage() {
   return (
     <AdminLayout>
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-500 pb-12">
-        <div className="relative overflow-hidden rounded-3xl bg-white border border-slate-200 shadow-sm p-6 sm:p-8">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-400 rounded-full filter blur-[80px] opacity-10 -mr-20 -mt-20 pointer-events-none"></div>
-          <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div className="flex items-center gap-4 sm:gap-6">
-              <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shrink-0">
-                <QrCode className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 uppercase">QR Verification</h1>
-                <p className="text-sm sm:text-base text-slate-500 font-medium mt-1">Verify students for financial aid distribution.</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <div className="grid gap-6 md:gap-8 lg:grid-cols-2">
           

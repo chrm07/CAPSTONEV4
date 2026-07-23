@@ -23,7 +23,7 @@ import {
   createStaffMemberDb, updateStaffPermissionsDb, deleteStaffMemberDb, getAdminRoleLabel, hasPermission, getDefaultAdminRoute, type User, type Permissions, type PermissionKey, ALL_PERMISSIONS, DEFAULT_PERMISSIONS,
 } from "@/lib/storage"
 
-import { UserPlus, Shield, ShieldCheck, Trash2, Edit, Eye, EyeOff, Loader2, UsersRound, Check, X, LayoutDashboard, Mail, FileText, Users, Calendar, QrCode, BarChart3 } from "lucide-react"
+import { UserPlus, Shield, ShieldCheck, Trash2, Edit, Eye, EyeOff, Loader2, Check, X, LayoutDashboard, Mail, FileText, Users, Calendar, QrCode, BarChart3 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 export default function StaffManagementPage() {
@@ -149,23 +149,10 @@ export default function StaffManagementPage() {
     <AdminLayout>
       <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-12">
         
-        {/* Hero Header */}
-        <div className="relative overflow-hidden rounded-3xl bg-white border border-slate-200 shadow-sm p-8">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-400 rounded-full filter blur-[80px] opacity-10 -mr-20 -mt-20 pointer-events-none"></div>
-          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-6">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 shadow-lg shrink-0">
-                <UsersRound className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-black tracking-tight text-slate-900 uppercase">Staff Management</h1>
-                <p className="text-slate-500 font-medium mt-1">Manage admin accounts and their access permissions.</p>
-              </div>
-            </div>
-            <Button onClick={() => setIsAddDialogOpen(true)} className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-md font-bold h-11 px-6 w-full md:w-auto">
-              <UserPlus className="h-4 w-4 mr-2" /> Add Staff Member
-            </Button>
-          </div>
+        <div className="flex justify-end">
+          <Button onClick={() => setIsAddDialogOpen(true)} className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-md font-bold h-11 px-6 w-full md:w-auto">
+            <UserPlus className="h-4 w-4 mr-2" /> Add Staff Member
+          </Button>
         </div>
 
         {/* Account Type Explanation */}

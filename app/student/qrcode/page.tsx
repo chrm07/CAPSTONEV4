@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { StudentLayout } from "@/components/student-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/auth-context"
 import QRCode from "react-qr-code"
-import { QrCode as QrIcon, AlertCircle, Loader2, Lock, CheckCircle, CalendarDays, Info, Shield, Smartphone, Download, Clock, Ban } from "lucide-react"
+import { QrCode as QrIcon, AlertCircle, Loader2, Lock, CheckCircle, CalendarDays, Info, Shield, Smartphone, Download, Clock, Ban, X } from "lucide-react"
 import { collection, query, where, onSnapshot, doc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
@@ -29,8 +29,8 @@ export default function StudentQRCodePage() {
   const [application, setApplication] = useState<any>(null)
   const [schedule, setSchedule] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("view")
   const [qrValue, setQrValue] = useState("")
+  const [showTicketModal, setShowTicketModal] = useState(false)
 
   const profileData = (user?.profileData as any) || {}
 
@@ -118,258 +118,254 @@ export default function StudentQRCodePage() {
 
   return (
     <StudentLayout>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 uppercase">Claiming Ticket</h1>
-          <p className="text-slate-500 font-medium mt-1">View and manage your scholarship verification QR code.</p>
-        </div>
-      </div>
+      <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-12">
 
-      <Tabs defaultValue="view" className="space-y-6" onValueChange={setActiveTab}>
-        <TabsList className="bg-slate-100 p-1 border rounded-2xl">
-          <TabsTrigger value="view" className="rounded-xl font-bold">View Ticket</TabsTrigger>
-          <TabsTrigger value="usage" className="rounded-xl font-bold">How to Use</TabsTrigger>
-          <TabsTrigger value="security" className="rounded-xl font-bold">Security</TabsTrigger>
-        </TabsList>
+        {/* INSTRUCTION CARD - Merged How to Use + Security */}
+        <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden">
+          <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+            <CardTitle className="text-lg font-black uppercase tracking-wider text-slate-800">How to Use Your QR Code</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
 
-        <TabsContent value="view" className="space-y-6 animate-in fade-in duration-500">
-          
-          {/* THE DIGITAL TICKET CARD */}
-          <Card className="border-0 shadow-2xl overflow-hidden max-w-md mx-auto bg-white rounded-3xl relative">
-            <div className="bg-emerald-600 p-6 text-center relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10" />
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-black opacity-10 rounded-full -ml-8 -mb-8" />
-              
-              <Badge className="bg-emerald-950/40 hover:bg-emerald-950/40 text-emerald-50 border-none mb-3 px-3 py-1 rounded-xl text-[10px] uppercase tracking-widest font-black backdrop-blur-sm shadow-none">
-                {isClaimed ? "Ticket Used" : "Official Claiming Pass"}
-              </Badge>
-              {/* 🔥 FIX: Replaced line-clamp-1 with break-words and text-balance to show full long names */}
-              <h2 className="text-2xl font-black text-white uppercase tracking-tight break-words text-balance leading-snug">
-                {profileData.fullName || user?.name}
-              </h2>
-              <p className="text-emerald-100/80 font-bold text-xs uppercase tracking-widest mt-2">
-                ID: {application?.id ? application.id.substring(0, 8) : "Pending"}
+            {/* Digital Verification */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 flex items-center">
+                <Smartphone className="mr-2 h-4 w-4 text-emerald-600" /> Digital Verification
+              </h3>
+              <ol className="list-decimal list-inside space-y-3 text-sm font-medium text-slate-600 pl-2 mt-3">
+                <li>Save your QR code before arriving at the venue.</li>
+                <li>Increase screen brightness before presenting your QR code.</li>
+                <li>Present the QR code to the scanner staff.</li>
+                <li>Wait for the system to display &quot;Verified&quot;.</li>
+                <li>Proceed to claim your financial assistance.</li>
+              </ol>
+            </div>
+
+            {/* Identity Verification */}
+            <div className="space-y-2 pt-4 border-t border-slate-100">
+              <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 flex items-center">
+                <Shield className="mr-2 h-4 w-4 text-emerald-600" /> Identity Verification
+              </h3>
+              <p className="text-sm font-medium text-slate-600">
+                For security purposes, you will need to present a physical valid ID along with your QR code to prove ownership.
               </p>
-            </div>
-            
-            <CardContent className="flex flex-col items-center justify-center p-8 bg-slate-50/50">
-              
-              {/* SCENARIO 1: CANCELLED */}
-              {isCancelled ? (
-                <div className="text-center w-full animate-in zoom-in-95">
-                  <div className="h-24 w-24 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border-4 border-white ring-4 ring-red-50">
-                    <Ban className="h-12 w-12" />
-                  </div>
-                  <h2 className="text-2xl font-black text-red-900 uppercase tracking-tight mb-2">Payout Cancelled</h2>
-                  <p className="text-slate-500 font-medium mb-6 text-sm">
-                    Your payout request has been cancelled by the administrator.
-                  </p>
-                  {application?.cancellationReason && (
-                    <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4 text-left">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-1">Reason</p>
-                      <p className="text-sm font-bold text-red-800">{application.cancellationReason}</p>
-                    </div>
-                  )}
-                  {application?.cancelledAt && (
-                    <Badge className="bg-slate-200 text-slate-700 shadow-none border-none px-4 py-2 font-bold uppercase tracking-widest text-[10px]">
-                      Cancelled on {new Date(application.cancelledAt).toLocaleDateString()}
-                    </Badge>
-                  )}
-
-                  <div className="mt-5 pt-4 border-t border-dashed border-red-200 text-left">
-                    <p className="text-sm text-red-700/80 leading-relaxed">
-                      <Info className="h-3.5 w-3.5 inline-block mr-1.5 -mt-0.5 text-red-500" />
-                      <span className="font-bold text-red-800">Important Notice</span>
-                    </p>
-                    <p className="text-sm text-red-700/80 leading-relaxed mt-1">
-                      Please visit the City Hall Scholarship Office to request a new payout schedule or to have your claim reprocessed.
-                    </p>
-                  </div>
-                </div>
-              )
-              
-              /* SCENARIO 2: ALREADY CLAIMED */
-              : isClaimed ? (
-                <div className="text-center w-full animate-in zoom-in-95">
-                  <div className="h-24 w-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border-4 border-white ring-4 ring-emerald-50">
-                    <CheckCircle className="h-12 w-12" />
-                  </div>
-                  <h2 className="text-2xl font-black text-emerald-900 uppercase tracking-tight mb-2">Payout Claimed</h2>
-                  <p className="text-slate-500 font-medium mb-6 text-sm">
-                    You have successfully received your financial assistance.
-                  </p>
-                  <Badge className="bg-slate-200 text-slate-700 shadow-none border-none px-4 py-2 font-bold uppercase tracking-widest text-[10px]">
-                    Claimed on {application.claimedAt ? new Date(application.claimedAt).toLocaleDateString() : 'Unknown Date'}
-                  </Badge>
-                </div>
-              ) 
-              
-              /* SCENARIO 3: APPROVED (READY TO CLAIM) - Displays immediately upon approval */
-              : isApproved ? (
-                <div className="text-center w-full animate-fade-in">
-                  <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 inline-block mb-6 relative group">
-                    <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-500 rounded-tl-[1.5rem] -translate-x-1 -translate-y-1" />
-                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-500 rounded-tr-[1.5rem] translate-x-1 -translate-y-1" />
-                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-500 rounded-bl-[1.5rem] -translate-x-1 translate-y-1" />
-                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-500 rounded-br-[1.5rem] translate-x-1 translate-y-1" />
-                    
-                    <div className="bg-white rounded-xl">
-                      <QRCode
-                        id="QRCode"
-                        value={qrValue}
-                        size={220}
-                        level="H"
-                        bgColor="#ffffff"
-                        fgColor="#000000"
-                        style={{ display: "block" }}
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Schedule Info - Shows if an admin has set the dates */}
-                  {schedule?.distributionStart ? (
-                    <div className="w-full bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-4 text-left shadow-sm">
-                      <div className="flex items-start gap-3">
-                        <CalendarDays className="h-5 w-5 text-indigo-500 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
-                            {schedule.distributionType === "extension" ? "Extended Schedule" : "Schedule"}
-                          </p>
-                          <p className="font-bold text-indigo-900 leading-tight text-sm">{schedule.distributionStart} to {schedule.distributionEnd}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ) 
-              
-              /* SCENARIO 3: PENDING / REJECTED / DRAFT */
-              : (
-                <div className="text-center w-full">
-                  <div className="h-[220px] bg-white border border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400 mx-auto mb-6 relative overflow-hidden shadow-sm">
-                    <QrIcon className="h-16 w-16 mb-2 opacity-20 blur-[2px]" />
-                    <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center">
-                       <div className="bg-white p-4 rounded-full shadow-xl">
-                         <Lock className="h-8 w-8 text-slate-400" />
-                       </div>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200 mb-3 text-[10px] uppercase font-black tracking-widest px-3 py-1">
-                    {application?.status === 'pending' ? 'Pending Approval' : application?.status === 'rejected' ? 'Application Rejected' : 'Ticket Locked'}
-                  </Badge>
-                  <p className="text-xs font-bold text-slate-500 max-w-[250px] mx-auto leading-relaxed">
-                    Your QR code will unlock automatically once your application has been officially <strong>Approved</strong>.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-            
-            <div className="relative h-6 bg-slate-50/50 flex items-center justify-between px-[-10px] overflow-hidden">
-                <div className="w-full border-t-[3px] border-dashed border-slate-200 absolute top-1/2 -translate-y-1/2 left-0 z-0"></div>
-                <div className="h-6 w-6 rounded-full bg-slate-50 absolute -left-3 shadow-inner z-10 border border-slate-100"></div>
-                <div className="h-6 w-6 rounded-full bg-slate-50 absolute -right-3 shadow-inner z-10 border border-slate-100"></div>
-            </div>
-
-            {/* Download button only visible if approved, not claimed, and not cancelled */}
-            {isApproved && !isClaimed && !isCancelled && (
-              <div className="bg-white p-6">
-                <Button 
-                  onClick={handleDownloadQRCode} 
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-12 font-black uppercase tracking-widest text-xs shadow-md hover:scale-[1.02] transition-transform"
-                >
-                  <Download className="mr-2 h-4 w-4" /> Save Ticket to Gallery
-                </Button>
-              </div>
-            )}
-          </Card>
-
-          {/* IMPORTANT REMINDER LOGIC */}
-          {!isCancelled && (isClaimed ? (
-            <Alert className="max-w-md mx-auto border-emerald-200 bg-emerald-50 rounded-2xl shadow-sm">
-              <CheckCircle className="h-5 w-5 text-emerald-600" />
-              <AlertTitle className="text-emerald-900 font-black uppercase tracking-tight text-sm">Financial Assistance Claimed</AlertTitle>
-              <AlertDescription className="text-emerald-800 font-bold text-xs mt-1 leading-relaxed">
-                Congrats, you've claimed your financial assistance for this cycle.
-              </AlertDescription>
-            </Alert>
-          ) : isApproved ? (
-            <Alert className="max-w-md mx-auto border-amber-200 bg-amber-50 rounded-2xl shadow-sm">
-              <Info className="h-5 w-5 text-amber-600" />
-              <AlertTitle className="text-amber-900 font-black uppercase tracking-tight text-sm">Important Reminder</AlertTitle>
-              <AlertDescription className="text-amber-800 font-bold text-xs mt-1 leading-relaxed">
-                Only the registered scholar can present this QR code to the municipal staff. Do not share this code online.
-              </AlertDescription>
-            </Alert>
-          ) : null)}
-
-        </TabsContent>
-
-        {/* HOW TO USE */}
-        <TabsContent value="usage" className="space-y-4">
-          <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden">
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100">
-              <CardTitle className="text-lg font-black uppercase tracking-wider text-slate-800">How to Use Your Ticket</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="space-y-2">
-                <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 flex items-center">
-                  <Smartphone className="mr-2 h-4 w-4 text-emerald-600" /> Digital Verification
-                </h3>
-                <ol className="list-decimal list-inside space-y-3 text-sm font-medium text-slate-600 pl-2 mt-3">
-                  <li>Save the QR code to your phone gallery before arriving at the venue.</li>
-                  <li>Present the QR code (turn screen brightness up) to the Scanner Staff.</li>
-                  <li>Staff will scan your code using the official municipal tablet.</li>
-                  <li>Once the system says "Verified", proceed to claim your financial assistance.</li>
-                </ol>
-              </div>
-
-              <div className="space-y-2 pt-4 border-t border-slate-100">
-                <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 flex items-center">
-                  <Shield className="mr-2 h-4 w-4 text-emerald-600" /> Identity Verification
-                </h3>
-                <p className="text-sm font-medium text-slate-600">
-                  For security purposes, you will need to present a physical valid ID along with your QR code to prove ownership.
-                </p>
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mt-3">
-                  <p className="text-xs font-black uppercase tracking-widest text-slate-800 mb-2">Acceptable IDs:</p>
-                  <ul className="list-disc list-inside space-y-2 text-sm font-medium text-slate-600 pl-2">
-                    <li>Valid School ID for the current semester</li>
-                    <li>Government-issued ID (National ID, Driver's License, Passport)</li>
-                    <li>Barangay Certification of Identity with photo</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* SECURITY */}
-        <TabsContent value="security" className="space-y-4">
-          <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden">
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100">
-              <CardTitle className="text-lg font-black uppercase tracking-wider text-slate-800">QR Code Security</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <Alert variant="destructive" className="bg-red-50 border-red-200 rounded-2xl">
-                <AlertCircle className="h-5 w-5 text-red-600" />
-                <AlertTitle className="text-red-900 font-black uppercase tracking-tight text-sm">Security Warning</AlertTitle>
-                <AlertDescription className="text-red-800 font-medium text-xs mt-1 leading-relaxed">
-                  Never post your QR code on Facebook, Instagram, or any public platform. If someone else scans your code, they may claim your financial aid.
-                </AlertDescription>
-              </Alert>
-
-              <div className="space-y-2 pt-2">
-                <h3 className="text-sm font-black uppercase tracking-tight text-slate-900">System Protections</h3>
-                <ul className="list-disc list-inside space-y-2 text-sm font-medium text-slate-600 pl-2 mt-2">
-                  <li>Tickets can only be verified by logged-in official Scanner Staff.</li>
-                  <li>The code automatically locks immediately after being scanned once.</li>
-                  <li>QR payloads use encrypted, database-linked identifiers.</li>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mt-3">
+                <p className="text-xs font-black uppercase tracking-widest text-slate-800 mb-2">Acceptable IDs:</p>
+                <ul className="list-disc list-inside space-y-2 text-sm font-medium text-slate-600 pl-2">
+                  <li>Valid School ID for the current semester</li>
+                  <li>Government-issued ID (National ID, Driver&apos;s License, Passport)</li>
+                  <li>Barangay Certification of Identity with photo</li>
                 </ul>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+
+            {/* Security Reminders */}
+            <div className="space-y-2 pt-4 border-t border-slate-100">
+              <Alert variant="destructive" className="bg-red-50 border-red-200 rounded-2xl">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <AlertTitle className="text-red-900 font-black uppercase tracking-tight text-sm">Security Reminders</AlertTitle>
+                <AlertDescription className="text-red-800 font-medium text-xs mt-1 leading-relaxed space-y-1">
+                  <p>• Never share your QR Code with anyone.</p>
+                  <p>• Do not post it on social media.</p>
+                  <p>• QR codes are for the registered student only.</p>
+                  <p>• The QR code can only be verified by authorized staff.</p>
+                  <p>• Once successfully scanned, it cannot be reused.</p>
+                </AlertDescription>
+              </Alert>
+            </div>
+
+            {/* System Protections */}
+            <div className="space-y-2 pt-2">
+              <h3 className="text-sm font-black uppercase tracking-tight text-slate-900">System Protections</h3>
+              <ul className="list-disc list-inside space-y-2 text-sm font-medium text-slate-600 pl-2 mt-2">
+                <li>Tickets can only be verified by logged-in official Scanner Staff.</li>
+                <li>The code automatically locks immediately after being scanned once.</li>
+                <li>QR payloads use encrypted, database-linked identifiers.</li>
+              </ul>
+            </div>
+
+          </CardContent>
+        </Card>
+
+        {/* Continue Button */}
+        <div className="flex justify-center">
+          <Button onClick={() => setShowTicketModal(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-12 px-10 font-black uppercase tracking-widest text-sm shadow-md hover:scale-[1.02] transition-transform">
+            Continue to My QR Ticket
+          </Button>
+        </div>
+
+        {/* QR Ticket Modal */}
+        <Dialog open={showTicketModal} onOpenChange={setShowTicketModal}>
+          <DialogContent className="max-w-md rounded-3xl border-0 shadow-2xl p-0 overflow-hidden bg-transparent">
+            <DialogClose className="absolute top-2 right-2 z-50 rounded-full h-8 w-8 bg-black/20 hover:bg-black/30 flex items-center justify-center transition-colors">
+              <X className="h-4 w-4 text-white" />
+            </DialogClose>
+
+            {/* THE DIGITAL TICKET CARD */}
+            <Card className="border-0 shadow-2xl overflow-hidden max-w-md mx-auto bg-white rounded-3xl relative">
+              <div className="bg-emerald-600 p-6 text-center relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10" />
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-black opacity-10 rounded-full -ml-8 -mb-8" />
+                
+                <Badge className="bg-emerald-950/40 hover:bg-emerald-950/40 text-emerald-50 border-none mb-3 px-3 py-1 rounded-xl text-[10px] uppercase tracking-widest font-black backdrop-blur-sm shadow-none">
+                  {isClaimed ? "Ticket Used" : "Official Claiming Pass"}
+                </Badge>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tight break-words text-balance leading-snug">
+                  {profileData.fullName || user?.name}
+                </h2>
+                <p className="text-emerald-100/80 font-bold text-xs uppercase tracking-widest mt-2">
+                  ID: {application?.id ? application.id.substring(0, 8) : "Pending"}
+                </p>
+              </div>
+              
+              <CardContent className="flex flex-col items-center justify-center p-8 bg-slate-50/50">
+                
+                {/* SCENARIO 1: CANCELLED */}
+                {isCancelled ? (
+                  <div className="text-center w-full animate-in zoom-in-95">
+                    <div className="h-24 w-24 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border-4 border-white ring-4 ring-red-50">
+                      <Ban className="h-12 w-12" />
+                    </div>
+                    <h2 className="text-2xl font-black text-red-900 uppercase tracking-tight mb-2">Payout Cancelled</h2>
+                    <p className="text-slate-500 font-medium mb-6 text-sm">
+                      Your payout request has been cancelled by the administrator.
+                    </p>
+                    {application?.cancellationReason && (
+                      <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4 text-left">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-1">Reason</p>
+                        <p className="text-sm font-bold text-red-800">{application.cancellationReason}</p>
+                      </div>
+                    )}
+                    {application?.cancelledAt && (
+                      <Badge className="bg-slate-200 text-slate-700 shadow-none border-none px-4 py-2 font-bold uppercase tracking-widest text-[10px]">
+                        Cancelled on {new Date(application.cancelledAt).toLocaleDateString()}
+                      </Badge>
+                    )}
+
+                    <div className="mt-5 pt-4 border-t border-dashed border-red-200 text-left">
+                      <p className="text-sm text-red-700/80 leading-relaxed">
+                        <Info className="h-3.5 w-3.5 inline-block mr-1.5 -mt-0.5 text-red-500" />
+                        <span className="font-bold text-red-800">Important Notice</span>
+                      </p>
+                      <p className="text-sm text-red-700/80 leading-relaxed mt-1">
+                        Please visit the City Hall Scholarship Office to request a new payout schedule or to have your claim reprocessed.
+                      </p>
+                    </div>
+                  </div>
+                )
+                
+                : isClaimed ? (
+                  <div className="text-center w-full animate-in zoom-in-95">
+                    <div className="h-24 w-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border-4 border-white ring-4 ring-emerald-50">
+                      <CheckCircle className="h-12 w-12" />
+                    </div>
+                    <h2 className="text-2xl font-black text-emerald-900 uppercase tracking-tight mb-2">Payout Claimed</h2>
+                    <p className="text-slate-500 font-medium mb-6 text-sm">
+                      You have successfully received your financial assistance.
+                    </p>
+                    <Badge className="bg-slate-200 text-slate-700 shadow-none border-none px-4 py-2 font-bold uppercase tracking-widest text-[10px]">
+                      Claimed on {application.claimedAt ? new Date(application.claimedAt).toLocaleDateString() : 'Unknown Date'}
+                    </Badge>
+                  </div>
+                )
+                
+                : isApproved ? (
+                  <div className="text-center w-full animate-fade-in">
+                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 inline-block mb-6 relative group">
+                      <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-500 rounded-tl-[1.5rem] -translate-x-1 -translate-y-1" />
+                      <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-500 rounded-tr-[1.5rem] translate-x-1 -translate-y-1" />
+                      <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-500 rounded-bl-[1.5rem] -translate-x-1 translate-y-1" />
+                      <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-500 rounded-br-[1.5rem] translate-x-1 translate-y-1" />
+                      
+                      <div className="bg-white rounded-xl">
+                        <QRCode
+                          id="QRCode"
+                          value={qrValue}
+                          size={220}
+                          level="H"
+                          bgColor="#ffffff"
+                          fgColor="#000000"
+                          style={{ display: "block" }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {schedule?.distributionStart ? (
+                      <div className="w-full bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-4 text-left shadow-sm">
+                        <div className="flex items-start gap-3">
+                          <CalendarDays className="h-5 w-5 text-indigo-500 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                              {schedule.distributionType === "extension" ? "Extended Schedule" : "Schedule"}
+                            </p>
+                            <p className="font-bold text-indigo-900 leading-tight text-sm">{schedule.distributionStart} to {schedule.distributionEnd}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                )
+                
+                : (
+                  <div className="text-center w-full">
+                    <div className="h-[220px] bg-white border border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400 mx-auto mb-6 relative overflow-hidden shadow-sm">
+                      <QrIcon className="h-16 w-16 mb-2 opacity-20 blur-[2px]" />
+                      <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center">
+                         <div className="bg-white p-4 rounded-full shadow-xl">
+                           <Lock className="h-8 w-8 text-slate-400" />
+                         </div>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200 mb-3 text-[10px] uppercase font-black tracking-widest px-3 py-1">
+                      {application?.status === 'pending' ? 'Pending Approval' : application?.status === 'rejected' ? 'Application Rejected' : 'Ticket Locked'}
+                    </Badge>
+                    <p className="text-xs font-bold text-slate-500 max-w-[250px] mx-auto leading-relaxed">
+                      Your QR code will unlock automatically once your application has been officially <strong>Approved</strong>.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+              
+              <div className="relative h-6 bg-slate-50/50 flex items-center justify-between px-[-10px] overflow-hidden">
+                  <div className="w-full border-t-[3px] border-dashed border-slate-200 absolute top-1/2 -translate-y-1/2 left-0 z-0"></div>
+                  <div className="h-6 w-6 rounded-full bg-slate-50 absolute -left-3 shadow-inner z-10 border border-slate-100"></div>
+                  <div className="h-6 w-6 rounded-full bg-slate-50 absolute -right-3 shadow-inner z-10 border border-slate-100"></div>
+              </div>
+
+              {isApproved && !isClaimed && !isCancelled && (
+                <div className="bg-white p-6">
+                  <Button 
+                    onClick={handleDownloadQRCode} 
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-12 font-black uppercase tracking-widest text-xs shadow-md hover:scale-[1.02] transition-transform"
+                  >
+                    <Download className="mr-2 h-4 w-4" /> Save Ticket to Gallery
+                  </Button>
+                </div>
+              )}
+            </Card>
+
+            {!isCancelled && (isClaimed ? (
+              <Alert className="max-w-md mx-auto border-emerald-200 bg-emerald-50 rounded-2xl shadow-sm">
+                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                <AlertTitle className="text-emerald-900 font-black uppercase tracking-tight text-sm">Financial Assistance Claimed</AlertTitle>
+                <AlertDescription className="text-emerald-800 font-bold text-xs mt-1 leading-relaxed">
+                  Congrats, you&apos;ve claimed your financial assistance for this cycle.
+                </AlertDescription>
+              </Alert>
+            ) : isApproved ? (
+              <Alert className="max-w-md mx-auto border-amber-200 bg-amber-50 rounded-2xl shadow-sm">
+                <Info className="h-5 w-5 text-amber-600" />
+                <AlertTitle className="text-amber-900 font-black uppercase tracking-tight text-sm">Important Reminder</AlertTitle>
+                <AlertDescription className="text-amber-800 font-bold text-xs mt-1 leading-relaxed">
+                  Only the registered scholar can present this QR code to the municipal staff. Do not share this code online.
+                </AlertDescription>
+              </Alert>
+            ) : null)}
+
+          </DialogContent>
+        </Dialog>
+
+      </div>
     </StudentLayout>
   )
 }

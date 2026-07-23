@@ -284,12 +284,7 @@ export default function ApprovedEmailsPage() {
       <AdminLayout>
         <div className="max-w-6xl mx-auto space-y-8 animate-fade-in pb-12">
           
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Approved Emails</h1>
-              <p className="text-slate-500 font-medium mt-1">Manage the whitelist of emails authorized to register for scholarships.</p>
-            </div>
-
+          <div className="flex justify-end">
             <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
               if (!open) resetDialog()
               else setIsAddDialogOpen(true)
@@ -337,7 +332,7 @@ export default function ApprovedEmailsPage() {
                       {addResults.failed.length > 0 && (
                         <Alert className="border-red-200 bg-red-50 rounded-xl">
                           <AlertCircle className="h-4 w-4 text-red-600" />
-                          <AlertDescription className="text-red-800">
+                          <AlertDescription className="text-emerald-800">
                             <span className="font-bold">Failed ({addResults.failed.length}):</span>
                             <div className="mt-1 text-xs max-h-20 overflow-y-auto font-mono">
                               {addResults.failed.join(", ")}
@@ -359,46 +354,45 @@ export default function ApprovedEmailsPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-
-            <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
-              if (!open) {
-                setIsEditDialogOpen(false)
-                setEditingEmail(null)
-              }
-            }}>
-              <DialogContent className="sm:max-w-md rounded-3xl border-0 shadow-2xl p-0 overflow-hidden bg-white">
-                <div className="h-2 bg-blue-500 w-full" />
-                <DialogHeader className="p-6 border-b border-slate-100">
-                  <DialogTitle className="text-xl font-black uppercase tracking-tight text-slate-800">Edit Email</DialogTitle>
-                  <DialogDescription className="font-medium text-slate-500 mt-1">
-                    Update the pre-approved email address.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="p-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-email" className="text-xs font-bold uppercase tracking-widest text-slate-500">Email Address</Label>
-                    <Input
-                      id="edit-email"
-                      type="email"
-                      value={editInput}
-                      onChange={(e) => setEditInput(e.target.value)}
-                      className="h-12 rounded-xl focus-visible:ring-blue-500 font-medium"
-                    />
-                  </div>
-                </div>
-                <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
-                  <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isEditLoading} className="rounded-xl font-bold">
-                    Cancel
-                  </Button>
-                  <Button onClick={handleEditEmail} disabled={isEditLoading || !editInput.trim()} className="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md">
-                    {isEditLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                    Save Changes
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
           </div>
+
+          <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+            if (!open) {
+              setIsEditDialogOpen(false)
+              setEditingEmail(null)
+            }
+          }}>
+            <DialogContent className="sm:max-w-md rounded-3xl border-0 shadow-2xl p-0 overflow-hidden bg-white">
+              <div className="h-2 bg-blue-500 w-full" />
+              <DialogHeader className="p-6 border-b border-slate-100">
+                <DialogTitle className="text-xl font-black uppercase tracking-tight text-slate-800">Edit Email</DialogTitle>
+                <DialogDescription className="font-medium text-slate-500 mt-1">
+                  Update the pre-approved email address.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="p-6">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-email" className="text-xs font-bold uppercase tracking-widest text-slate-500">Email Address</Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    value={editInput}
+                    onChange={(e) => setEditInput(e.target.value)}
+                    className="h-12 rounded-xl focus-visible:ring-blue-500 font-medium"
+                  />
+                </div>
+              </div>
+              <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
+                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isEditLoading} className="rounded-xl font-bold">
+                  Cancel
+                </Button>
+                <Button onClick={handleEditEmail} disabled={isEditLoading || !editInput.trim()} className="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md">
+                  {isEditLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <div className="grid gap-4 md:grid-cols-3">
             <Card className="rounded-2xl border-slate-200 shadow-sm">

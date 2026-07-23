@@ -250,11 +250,6 @@ export default function ScholarsPage() {
       <AdminLayout>
         <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-12">
           
-          {/* Header */}
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Approved Scholars</h1>
-            <p className="text-slate-500 font-medium mt-1">View and filter the official list of active and past scholarship recipients.</p>
-          </div>
 
           <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-white">
             <div className="h-2 bg-gradient-to-r from-emerald-400 to-emerald-600" />
